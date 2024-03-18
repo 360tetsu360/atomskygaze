@@ -1,2 +1,0 @@
-#!/bin/sh
-echo "$*" | /usr/bin/nc localhost 4000

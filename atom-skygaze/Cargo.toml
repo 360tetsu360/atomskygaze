@@ -1,0 +1,12 @@
+[package]
+name = "atom-skygaze"
+version = "0.1.0"
+edition = "2021"
+authors = ["tmmgq"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fitsio = { version = "0.21.2", features = ["fitsio-src"] }
+opencv = { version = "0.88.8", features = ["imgproc", "imgcodecs", "gapi"] }
+isvp-rs = { path = "../isvp-rs" }

@@ -9,10 +9,10 @@ echo "Executing pre filesystem image creation script"
 /src/buildscripts/local_build.sh
 
 find $TARGET_DIR -name .DS_Store -delete
-cp /src/configs/atomhack.ver $TARGET_DIR/etc
+cp /src/configs/skygaze.ver $TARGET_DIR/etc
 
-DEFAULT_IMAGE_DIR="/atomtools/build/buildroot-2016.02/output/images"
-BASE_DIR=${BASE_DIR:-/atomtools/build/buildroot-2016.02/output}
+DEFAULT_IMAGE_DIR="/atomskygaze/build/buildroot-2024.02/output/images"
+BASE_DIR=${BASE_DIR:-/atomskygaze/build/buildroot-2024.02/output}
 IMAGES="${BASE_DIR}/images"
-HOST_DIR=${HOST_DIR:-/atomtools/build/buildroot-2016.02/output/host}
-TARGET_DIR=${TARGET_DIR:-/atomtools/build/buildroot-2016.02/output/target}
+HOST_DIR=${HOST_DIR:-/atomskygaze/build/buildroot-2024.02/output/host}
+TARGET_DIR=${TARGET_DIR:-/atomskygaze/build/buildroot-2024.02/output/target}

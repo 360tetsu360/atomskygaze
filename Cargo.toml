@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "atom-skygaze",
+    "isvp-sys",
+    "isvp-rs",
+]
+
+[patch.crates-io]
+fitsio-sys = { path = "./patches/fitsio-sys" }

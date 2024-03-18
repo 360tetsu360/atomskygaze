@@ -4,7 +4,7 @@ set -o errexit          # Exit on most errors (see the manual)
 set -o errtrace         # Make sure any error trap is inherited
 set -o nounset          # Disallow expansion of unset variables
 set -o pipefail         # Use last non-zero exit code in a pipeline
-
+BASE_DIR=${BASE_DIR:-/atomskygaze/build/buildroot-2024.02/output}
 if [ $# -eq 0 ]
 then
     echo "Usage: $0 <output_dir>"
@@ -26,9 +26,9 @@ cd $ROOTFS_DIR
 mkdir -p {bin,dev,etc,lib,mnt,proc,root,sbin,sys,tmp}
 
 cp -r /src/initramfs_skeleton/* $ROOTFS_DIR/
-cp $BASE_DIR/staging/bin-init/fsck.fat $ROOTFS_DIR/bin/
-cp $BASE_DIR/staging/bin-init/fsck.exfat $ROOTFS_DIR/bin/
-cp $BASE_DIR/staging/bin-init/busybox $ROOTFS_DIR/bin/
+cp $BASE_DIR/build/dosfstools-init-3.0.28/fsck.fat $ROOTFS_DIR/bin/
+cp $BASE_DIR/build/exfatprogs-init-1.2.2/fsck/fsck.exfat $ROOTFS_DIR/bin/
+cp $BASE_DIR/build/busybox-init-1.24.1/busybox $ROOTFS_DIR/bin/
 
 # Save a few bytes by removing the readme
 rm -f $ROOTFS_DIR/README.md

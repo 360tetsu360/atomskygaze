@@ -1,0 +1,16 @@
+diff -urp a/arch/mips/xburst/soc-t31/common/clk/clk_cgu.c b/arch/mips/xburst/soc-t31/common/clk/clk_cgu.c
+--- a/arch/mips/xburst/soc-t31/common/clk/clk_cgu.c   2021-02-02 16:12:25.000000000 +0000
++++ b/arch/mips/xburst/soc-t31/common/clk/clk_cgu.c   2024-03-18 08:09:22.647475388 +0000
+@@ -123,7 +123,11 @@ static unsigned long cgu_get_rate(struct
+ 
+ 		printk(KERN_DEBUG"%s, parent = %ld, rate = %ld, m = %d, n = %d, reg val = 0x%08x\n",
+ 				__func__, clk->parent->rate, clk->rate, m, n, cpm_inl(cgu_clks[no].off));
+-		return (clk->parent->rate * m) / n;
++
++		if (n != 0)
++		    return (clk->parent->rate * m) / n;
++		else
++		    return 0;
+ 	}
+ 
+ 	if(clk->parent == get_clk_from_id(CLK_ID_EXT1))
