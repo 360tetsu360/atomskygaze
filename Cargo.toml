@@ -2,7 +2,6 @@
 members = [
     "atom-skygaze",
     "isvp-sys",
-    "isvp-rs",
 ]
 
 [patch.crates-io]

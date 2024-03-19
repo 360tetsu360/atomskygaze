@@ -9,4 +9,4 @@ authors = ["tmmgq"]
 [dependencies]
 fitsio = { version = "0.21.2", features = ["fitsio-src"] }
 opencv = { version = "0.88.8", features = ["imgproc", "imgcodecs", "gapi"] }
-isvp-rs = { path = "../isvp-rs" }
+isvp-sys = { path = "../isvp-sys" }

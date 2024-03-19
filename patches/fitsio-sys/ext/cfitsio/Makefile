@@ -35,14 +35,14 @@ INSTALL_DIRS	= ${DESTDIR}${prefix} ${CFITSIO_INCLUDE} ${CFITSIO_LIB} ${CFITSIO_L
 
 SHELL =		/bin/sh
 ARCHIVE =	ar rv
-RANLIB =	mipsel-ingenic-linux-gnu-ranlib
+RANLIB =	ranlib
 CC =		/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc
-CFLAGS =	-O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC
+CFLAGS =	-O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC
 CPPFLAGS =	
 SSE_FLAGS =	
 FC =		notfound
-LDFLAGS =	-O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE
-LDFLAGS_BIN =	-O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Wl,-rpath,${CFITSIO_LIB}
+LDFLAGS =	-O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE
+LDFLAGS_BIN =	-O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Wl,-rpath,${CFITSIO_LIB}
 DEFS =		-DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_MEMORY_H=1 -DHAVE_STRINGS_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_STDINT_H=1 -DHAVE_UNISTD_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_MATH_H=1 -DHAVE_LIMITS_H=1 -D_LARGEFILE_SOURCE=1 -D_FILE_OFFSET_BITS=64 -DHAVE_FTRUNCATE=1 -DHAVE_LONGLONG=1 -DHAVE_SHMEM_SERVICES=1 -DHAVE_FLOCK_T=1 -D_REENTRANT=1 -D_XOPEN_SOURCE=700 -DHAVE_LIBPTHREAD=1 -DHAVE_FMEMOPEN=1 -DHAVE_NET_SERVICES=1
 LIBS =		-lpthread 
 LIBS_CURL =	

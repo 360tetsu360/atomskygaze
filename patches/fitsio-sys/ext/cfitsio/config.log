@@ -27,8 +27,6 @@ uname -v = #1 SMP Thu Jan 11 04:09:03 UTC 2024
 /usr/bin/oslevel       = unknown
 /bin/universe          = unknown
 
-PATH: /atomskygaze/build/buildroot-2024.02/output/host/bin
-PATH: /atomskygaze/build/buildroot-2024.02/output/host/sbin
 PATH: /root/.vscode-server/bin/863d2581ecda6849923a2118d93a088b0745d9d6/bin/remote-cli
 PATH: /root/.cargo/bin
 PATH: /usr/local/sbin
@@ -81,28 +79,28 @@ mipsel-ingenic-linux-gnu-gcc.br_real: fatal error: no input files
 compilation terminated.
 configure:2675: $? = 1
 configure:2695: checking whether the C compiler works
-configure:2717: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE   conftest.c  >&5
+configure:2717: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE   conftest.c  >&5
 configure:2721: $? = 0
 configure:2769: result: yes
 configure:2772: checking for C compiler default output file name
 configure:2774: result: a.out
 configure:2780: checking for suffix of executables
-configure:2787: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE   conftest.c  >&5
+configure:2787: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE   conftest.c  >&5
 configure:2791: $? = 0
 configure:2813: result: 
 configure:2835: checking whether we are cross compiling
-configure:2843: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE   conftest.c  >&5
+configure:2843: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE   conftest.c  >&5
 configure:2847: $? = 0
 configure:2854: ./conftest
 /src/patches/fitsio-sys/ext/cfitsio/configure: line 2856: ./conftest: cannot execute binary file: Exec format error
 configure:2858: $? = 126
 configure:2873: result: yes
 configure:2878: checking for suffix of object files
-configure:2900: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:2900: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:2904: $? = 0
 configure:2925: result: o
 configure:2929: checking whether we are using the GNU C compiler
-configure:2948: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:2948: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:2948: $? = 0
 configure:2957: result: yes
 configure:2966: checking whether /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc accepts -g
@@ -110,7 +108,7 @@ configure:2986: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-inge
 configure:2986: $? = 0
 configure:3027: result: yes
 configure:3044: checking for /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc option to accept ISO C89
-configure:3107: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc  -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:3107: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc  -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:3107: $? = 0
 configure:3120: result: none needed
 configure:3146: checking how to run the C preprocessor
@@ -156,43 +154,43 @@ configure:3337: result: /usr/bin/grep
 configure:3342: checking for egrep
 configure:3404: result: /usr/bin/grep -E
 configure:3409: checking for ANSI C header files
-configure:3429: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:3429: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:3429: $? = 0
 configure:3513: result: yes
 configure:3526: checking for sys/types.h
-configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:3526: $? = 0
 configure:3526: result: yes
 configure:3526: checking for sys/stat.h
-configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:3526: $? = 0
 configure:3526: result: yes
 configure:3526: checking for stdlib.h
-configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:3526: $? = 0
 configure:3526: result: yes
 configure:3526: checking for string.h
-configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:3526: $? = 0
 configure:3526: result: yes
 configure:3526: checking for memory.h
-configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:3526: $? = 0
 configure:3526: result: yes
 configure:3526: checking for strings.h
-configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:3526: $? = 0
 configure:3526: result: yes
 configure:3526: checking for inttypes.h
-configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:3526: $? = 0
 configure:3526: result: yes
 configure:3526: checking for stdint.h
-configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:3526: $? = 0
 configure:3526: result: yes
 configure:3526: checking for unistd.h
-configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:3526: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:3526: $? = 0
 configure:3526: result: yes
 configure:3775: checking for mipsel-ingenic-linux-gnu-gcc
@@ -263,14 +261,17 @@ configure:4393: checking for ar
 configure:4409: found /usr/bin/ar
 configure:4421: result: ar
 configure:4438: checking for mipsel-ingenic-linux-gnu-ranlib
-configure:4454: found /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-ranlib
-configure:4465: result: mipsel-ingenic-linux-gnu-ranlib
+configure:4468: result: no
+configure:4478: checking for ranlib
+configure:4494: found /usr/bin/ranlib
+configure:4505: result: ranlib
+configure:4517: WARNING: using cross tools not prefixed with host triplet
 configure:4531: checking for stdlib.h
 configure:4531: result: yes
 configure:4531: checking for string.h
 configure:4531: result: yes
 configure:4531: checking math.h usability
-configure:4531: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:4531: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:4531: $? = 0
 configure:4531: result: yes
 configure:4531: checking math.h presence
@@ -280,7 +281,7 @@ configure:4531: result: yes
 configure:4531: checking for math.h
 configure:4531: result: yes
 configure:4531: checking limits.h usability
-configure:4531: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:4531: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:4531: $? = 0
 configure:4531: result: yes
 configure:4531: checking limits.h presence
@@ -289,26 +290,26 @@ configure:4531: $? = 0
 configure:4531: result: yes
 configure:4531: checking for limits.h
 configure:4531: result: yes
-configure:4554: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE  conftest.c >&5
+configure:4554: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE  conftest.c >&5
 configure:4554: $? = 0
 configure:4979: checking whether ftruncate works
-configure:4995: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC  -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE conftest.c  >&5
+configure:4995: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC  -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE conftest.c  >&5
 configure:4995: $? = 0
 configure:4999: result: yes
 configure:5013: checking whether long long is defined
-configure:5029: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC  conftest.c >&5
+configure:5029: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC  conftest.c >&5
 configure:5029: $? = 0
 configure:5033: result: yes
 configure:5054: checking whether system V style IPC services are supported
-configure:5075: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC  -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE conftest.c  >&5
+configure:5075: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC  -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE conftest.c  >&5
 configure:5075: $? = 0
 configure:5080: result: yes
 configure:5096: checking whether flock_t is defined in sys/fcntl.h
-configure:5112: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC  conftest.c >&5
+configure:5112: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC  conftest.c >&5
 configure:5112: $? = 0
 configure:5116: result: yes
 configure:5126: checking whether flock_t is defined in sys/flock.h
-configure:5142: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC  conftest.c >&5
+configure:5142: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC  conftest.c >&5
 conftest.c:29:10: fatal error: sys/flock.h: No such file or directory
    29 | #include <sys/flock.h>
       |          ^~~~~~~~~~~~~
@@ -356,11 +357,11 @@ configure: failed program was:
 | }
 configure:5150: result: no
 configure:5170: checking for main in -lpthread
-configure:5189: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC  -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE conftest.c -lpthread   >&5
+configure:5189: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC  -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE conftest.c -lpthread   >&5
 configure:5189: $? = 0
 configure:5198: result: yes
 configure:5218: checking whether union semun is defined
-configure:5236: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC  conftest.c >&5
+configure:5236: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -c -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC  conftest.c >&5
 conftest.c: In function 'main':
 conftest.c:40:13: error: storage size of 'filler' isn't known
    40 | union semun filler;
@@ -413,15 +414,15 @@ configure: failed program was:
 | }
 configure:5244: result: no
 configure:5253: checking for fmemopen
-configure:5253: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC  -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE conftest.c -lpthread  >&5
+configure:5253: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC  -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE conftest.c -lpthread  >&5
 configure:5253: $? = 0
 configure:5253: result: yes
 configure:5266: checking for library containing gethostbyname
-configure:5297: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC  -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE conftest.c -lpthread  >&5
+configure:5297: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC  -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE conftest.c -lpthread  >&5
 configure:5297: $? = 0
 configure:5314: result: none required
 configure:5324: checking for library containing connect
-configure:5355: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC  -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE conftest.c -lpthread  >&5
+configure:5355: /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -o conftest -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC  -O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE conftest.c -lpthread  >&5
 configure:5355: $? = 0
 configure:5372: result: none required
 configure:5534: creating ./config.status
@@ -475,7 +476,7 @@ ac_cv_c_compiler_gnu=yes
 ac_cv_env_CC_set=set
 ac_cv_env_CC_value=/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc
 ac_cv_env_CFLAGS_set=set
-ac_cv_env_CFLAGS_value='-O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE'
+ac_cv_env_CFLAGS_value='-O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE'
 ac_cv_env_CPPFLAGS_set=
 ac_cv_env_CPPFLAGS_value=
 ac_cv_env_CPP_set=
@@ -511,7 +512,7 @@ ac_cv_path_GREP=/usr/bin/grep
 ac_cv_prog_AR=ar
 ac_cv_prog_CC=/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc
 ac_cv_prog_CPP='/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -E'
-ac_cv_prog_RANLIB=mipsel-ingenic-linux-gnu-ranlib
+ac_cv_prog_ac_ct_RANLIB=ranlib
 ac_cv_prog_cc_c89=
 ac_cv_prog_cc_g=yes
 ac_cv_search_connect='none required'
@@ -531,7 +532,7 @@ CFITSIO_MINOR='49'
 CFITSIO_SHLIB='lib${PACKAGE}${SHLIB_SUFFIX}.${CFITSIO_SONAME}.${CFITSIO_MAJOR}.${CFITSIO_MINOR}'
 CFITSIO_SHLIB_SONAME='lib${PACKAGE}${SHLIB_SUFFIX}.${CFITSIO_SONAME}'
 CFITSIO_SONAME='9'
-CFLAGS='-O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Dg77Fortran -fPIC'
+CFLAGS='-O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC'
 CPP='/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -E'
 CPPFLAGS=''
 CURLCONFIG=''
@@ -547,8 +548,8 @@ GCCVERSION='12.3.0'
 GREP='/usr/bin/grep'
 GSIFTP_SRC=''
 INSTALL_ROOT='${prefix}'
-LDFLAGS='-O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE'
-LDFLAGS_BIN='-O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer  -O0 -fPIE -Wl,-rpath,${CFITSIO_LIB}'
+LDFLAGS='-O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE'
+LDFLAGS_BIN='-O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Wl,-rpath,${CFITSIO_LIB}'
 LIBOBJS=''
 LIBPRE=''
 LIBS='-lpthread '
@@ -562,7 +563,7 @@ PACKAGE_TARNAME=''
 PACKAGE_URL=''
 PACKAGE_VERSION=''
 PATH_SEPARATOR=':'
-RANLIB='mipsel-ingenic-linux-gnu-ranlib'
+RANLIB='ranlib'
 SHELL='/bin/bash'
 SHLIB_LD='/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -shared -Wl,-soname,lib${PACKAGE}${SHLIB_SUFFIX}.${CFITSIO_SONAME}'
 SHLIB_SUFFIX='.so'

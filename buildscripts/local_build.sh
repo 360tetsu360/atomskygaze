@@ -12,7 +12,7 @@ mkdir -p $TARGET_DIR/configs
 
 #build atom-skygaze
 cd /src
-cargo +nightly build -Z build-std --target mipsel-unknown-linux-gnu
+cargo +nightly build -Z build-std --target mipsel-unknown-linux-gnu --release
 cp -dpf /src/target/mipsel-unknown-linux-gnu/release/atom-skygaze $TARGET_DIR/usr/bin/atom-skygaze
 
 # build libcallback.so

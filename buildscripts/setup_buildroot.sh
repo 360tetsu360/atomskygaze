@@ -7,6 +7,7 @@ rm -rf /atomtools/build/buildroot-2016.02/package/ffmpeg
 rm -rf /atomtools/build/buildroot-2016.02/package/mjpg-streamer
 rm -rf /atomtools/build/buildroot-2016.02/package/ncurses
 cp -r /src/custompackages/package/* /atomtools/build/buildroot-2016.02/package/
+cp -r /src/lib/* /atomskygaze/build/buildroot-2024.02/output/target/usr/lib/
 
 patch -p1 < /src/patches/add_fp_no_fused_madd.patch
 patch -p1 < /src/patches/libv4l_add_lpthread.patch
