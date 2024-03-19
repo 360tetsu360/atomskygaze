@@ -2,10 +2,60 @@ use fitsio::images::{ImageDescription, ImageType};
 use fitsio::FitsFile;
 use isvp_sys::*;
 use opencv::core::*;
-use opencv::imgproc::*;
+use opencv::imgproc;
+use opencv::Error;
 use std::os::raw::c_void;
 
 const SENSOR_NAME: &[u8] = b"gc2053";
+
+fn brightest_frame(imgs: &[Mat]) -> Result<Mat, Error> {
+    let mut ret = imgs[0].clone();
+
+    for img in &imgs[1..] {
+        let mut tmp = Mat::default();
+        max(&ret, img, &mut tmp)?;
+        ret = tmp;
+    }
+
+    Ok(ret)
+}
+
+fn make_diff_list(imgs: &[Mat]) -> Result<Vec<Mat>, Error> {
+    let mut diff_list = vec![];
+
+    for win in imgs.windows(2) {
+        let img1 = &win[1];
+        let img2 = &win[0];
+
+        let mut diff = Mat::default();
+        subtract(img1, img2, &mut diff, &no_array(), -1)?;
+
+        diff_list.push(diff);
+    }
+
+    Ok(diff_list)
+}
+
+fn detect_lines(img: &Mat, min_length: f64) -> Result<Vector<Vec4i>, Error> {
+    let mut blur = Mat::default();
+    imgproc::gaussian_blur(img, &mut blur, Size::new(3, 3), 0., 0., BORDER_DEFAULT)?;
+
+    let mut canny = Mat::default();
+    imgproc::canny(&blur, &mut canny, 33., 66., 3, false)?;
+
+    let mut lines: Vector<Vec4i> = Vector::new();
+    imgproc::hough_lines_p(
+        &canny,
+        &mut lines,
+        1.,
+        std::f64::consts::PI / 180.,
+        10,
+        min_length,
+        3.,
+    )?;
+
+    Ok(lines)
+}
 
 unsafe fn init_imp(sensor_info: *mut IMPSensorInfo) {
     dbg!(IMP_ISP_Open());
@@ -53,7 +103,7 @@ unsafe fn imp() {
 
     init_imp(&mut sensor_info);
 
-    let mut chn_attr = IMPFSChnAttr {
+    let mut chn_0 = IMPFSChnAttr {
         picWidth: 1920,
         picHeight: 1080,
         pixFmt: IMPPixelFormat_PIX_FMT_NV12,
@@ -82,33 +132,86 @@ unsafe fn imp() {
         },
     };
 
-    dbg!(IMP_FrameSource_CreateChn(0, &mut chn_attr));
-    dbg!(IMP_FrameSource_SetChnAttr(0, &chn_attr));
+    let mut chn_1 = IMPFSChnAttr {
+        picWidth: 640,
+        picHeight: 360,
+        pixFmt: IMPPixelFormat_PIX_FMT_NV12,
+        crop: IMPFSChnCrop {
+            enable: 0,
+            left: 0,
+            top: 0,
+            width: 1920,
+            height: 1080,
+        },
+        scaler: IMPFSChnScaler {
+            enable: 1,
+            outwidth: 640,
+            outheight: 360,
+        },
+        outFrmRateNum: 25,
+        outFrmRateDen: 1,
+        nrVBs: 2,
+        type_: IMPFSChnType_FS_PHY_CHANNEL,
+        fcrop: IMPFSChnCrop {
+            enable: 0,
+            left: 0,
+            top: 0,
+            width: 0,
+            height: 0,
+        },
+    };
+
+    dbg!(IMP_FrameSource_CreateChn(0, &mut chn_0));
+    dbg!(IMP_FrameSource_SetChnAttr(0, &chn_0));
+    dbg!(IMP_FrameSource_CreateChn(1, &mut chn_1));
+    dbg!(IMP_FrameSource_SetChnAttr(1, &chn_1));
+
     dbg!(IMP_FrameSource_EnableChn(0));
-    dbg!(IMP_FrameSource_SetFrameDepth(0, 4));
+    dbg!(IMP_FrameSource_EnableChn(1));
+    dbg!(IMP_FrameSource_SetFrameDepth(0, 1));
+    dbg!(IMP_FrameSource_SetFrameDepth(1, 10));
 
-    let mut frame_bak: *mut IMPFrameInfo = std::ptr::null_mut();
+    let mut detections = 0;
 
-    for m in 0..50 {
-        println!("frame number {}", m);
-        dbg!(IMP_FrameSource_GetFrame(0, &mut frame_bak));
-        if m == 25 {
-            println!(
-                "width : {}, height {}",
-                (*frame_bak).width,
-                (*frame_bak).height
-            );
-            println!(
-                "frame_size : {}, addr {}",
-                (*frame_bak).size,
-                (*frame_bak).virAddr
-            );
+    for _ in 0..10000 {
+        let mut frames = vec![];
+        let mut imgs = vec![];
+        for _ in 0..5 {
+            let mut frame_bak: *mut IMPFrameInfo = std::ptr::null_mut();
+            dbg!(IMP_FrameSource_GetFrame(1, &mut frame_bak));
 
-            let yuv = Mat::new_rows_cols_with_data_def(1620, 1920, CV_8UC1, (*frame_bak).virAddr as *mut c_void).unwrap();
-            let mut dst = Mat::default();
-            cvt_color(&yuv, &mut dst, COLOR_YUV2GRAY_NV12, 0).unwrap();
+            let (img_width, img_height) = ((*frame_bak).width, (*frame_bak).height);
+            //println!("width : {}, height {}", img_width, img_height);
 
-            let data: Vec<u8> = dst
+            let gray = Mat::new_rows_cols_with_data_def(
+                img_height as i32,
+                img_width as i32,
+                CV_8UC1,
+                (*frame_bak).virAddr as *mut c_void,
+            )
+            .unwrap();
+
+            frames.push(frame_bak);
+            imgs.push(gray);
+        }
+
+        let diff_list = make_diff_list(&imgs).unwrap();
+
+        let brightest = brightest_frame(&diff_list).unwrap();
+
+        let detected = detect_lines(&brightest, 3.).unwrap();
+
+        for line in detected {
+            dbg!(line);
+            detections += 1;
+        }
+
+        while let Some(frame_bak) = frames.pop() {
+            dbg!(IMP_FrameSource_ReleaseFrame(1, frame_bak));
+        }
+
+        if detections > 100 {
+            let data: Vec<u8> = brightest
                 .to_vec_2d::<u8>()
                 .unwrap()
                 .iter()
@@ -119,10 +222,10 @@ unsafe fn imp() {
 
             let primary_hdu_description = ImageDescription {
                 data_type: ImageType::UnsignedByte,
-                dimensions: &[1080, 1920],
+                dimensions: &[360, 640],
             };
 
-            let mut fitsfile = FitsFile::create("/media/mmc/test.fits")
+            let mut fitsfile = FitsFile::create("/media/mmc/detected.fits")
                 .with_custom_primary(&primary_hdu_description)
                 .overwrite()
                 .open()
@@ -132,13 +235,17 @@ unsafe fn imp() {
 
             hdu.write_image(&mut fitsfile, &data).unwrap();
             fitsfile.pretty_print().unwrap();
+
+            break;
         }
-        dbg!(IMP_FrameSource_ReleaseFrame(0, frame_bak));
     }
 
-    dbg!(IMP_FrameSource_SetFrameDepth(0, 0));
-    dbg!(IMP_FrameSource_DisableChn(0));
+    //dbg!(IMP_FrameSource_SetFrameDepth(0, 0));
+    dbg!(IMP_FrameSource_SetFrameDepth(1, 0));
+    //dbg!(IMP_FrameSource_DisableChn(0));
+    dbg!(IMP_FrameSource_DisableChn(1));
     dbg!(IMP_FrameSource_DestroyChn(0));
+    dbg!(IMP_FrameSource_DestroyChn(1));
 
     exit_imp(&mut sensor_info);
 }
