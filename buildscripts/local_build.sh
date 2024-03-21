@@ -12,6 +12,7 @@ mkdir -p $TARGET_DIR/configs
 
 #build atom-skygaze
 cd /src
+cp -r /src/lib/* /atomskygaze/build/buildroot-2024.02/output/target/usr/lib/
 cargo +nightly build -Z build-std --target mipsel-unknown-linux-gnu --release
 cp -dpf /src/target/mipsel-unknown-linux-gnu/release/atom-skygaze $TARGET_DIR/usr/bin/atom-skygaze
 

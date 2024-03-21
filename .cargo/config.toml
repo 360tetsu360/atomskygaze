@@ -3,6 +3,6 @@ linker = "/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-li
 ar = "/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-ar"
 
 [env]
-OPENCV_LINK_LIBS = "opencv_core,opencv_gapi,opencv_imgcodecs,opencv_imgproc"
-OPENCV_LINK_PATHS = "/atomskygaze/build/buildroot-2024.02/output/staging/usr/lib"
-OPENCV_INCLUDE_PATHS = "/atomskygaze/build/buildroot-2024.02/output/staging/usr/include/opencv4"
+OPENCV_LINK_LIBS = "opencv_core,opencv_gapi,opencv_imgcodecs,opencv_imgproc,opencv_video"
+OPENCV_LINK_PATHS = "/atomskygaze/build/buildroot-2024.02/output/host/mipsel-ingenic-linux-gnu/sysroot/usr/lib"
+OPENCV_INCLUDE_PATHS = "/atomskygaze/build/buildroot-2024.02/output/host/mipsel-ingenic-linux-gnu/sysroot/usr/include/opencv4"
