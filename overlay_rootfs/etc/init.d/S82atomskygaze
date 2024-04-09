@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+
+case "$1" in
+  start)
+    insmod /atom/system/driver/tx-isp-t31.ko isp_clk=100000000
+    insmod /atom/system/driver/avpu.ko
+    insmod /atom/system/driver/sinfo.ko
+    insmod /atom/system/driver/audio.ko spk_gpio=-1
+    insmod /atom/system/driver/sample_pwm_core.ko
+    insmod /atom/system/driver/sample_pwm_hal.ko
+    insmod /atom/system/driver/speaker_ctl.ko
+    insmod /atom/system/driver/sensor_gc2053_t31.ko data_interface=1
+    if [ -f /media/mmc/atom-skygaze ]; then
+      /media/mmc/atom-skygaze
+    else
+      atom-skygaze
+    fi
+	;;
+  stop)
+    /scripts/network_init.sh stop
+	;;
+  restart|reload)
+    /scripts/network_init.sh restart
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit $?

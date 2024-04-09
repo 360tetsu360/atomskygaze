@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Swaps on the sdcard if available
 #

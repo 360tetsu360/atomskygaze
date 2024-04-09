@@ -27,7 +27,7 @@ uname -v = #1 SMP Thu Jan 11 04:09:03 UTC 2024
 /usr/bin/oslevel       = unknown
 /bin/universe          = unknown
 
-PATH: /root/.vscode-server/bin/863d2581ecda6849923a2118d93a088b0745d9d6/bin/remote-cli
+PATH: /root/.vscode-server/bin/5c3e652f63e798a5ac2f31ffd0d863669328dc4c/bin/remote-cli
 PATH: /root/.cargo/bin
 PATH: /usr/local/sbin
 PATH: /usr/local/bin

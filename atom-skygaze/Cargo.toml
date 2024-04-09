@@ -8,7 +8,16 @@ authors = ["tmmgq"]
 
 [dependencies]
 fitsio = { version = "0.21.2", features = ["fitsio-src"] }
-opencv = { version = "0.88.8", features = ["video", "imgproc", "imgcodecs", "gapi"] }
+opencv = { version = "0.89", features = ["video", "videoio", "imgproc", "imgcodecs", "gapi", "bgsegm", "ximgproc", "clang-runtime"] }
 isvp-sys = { path = "../isvp-sys" }
 env_logger = "0.11.3"
 log = "0.4.21"
+base64 = "0.22.0"
+flate2 = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+axum = { version="0.7.5", features = ["ws"] }
+tower-http = { version = "0.5.0", features = ["fs", "trace"] }
+futures = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+minimp4 = { path = "../patches/minimp4.rs/packages/minimp4" }
+chrono = "0.4.37"

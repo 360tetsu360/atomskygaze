@@ -1,0 +1,29 @@
+#!/bin/sh
+
+DAEMON="hostapd"
+CONFIG=/etc/hostapd.conf
+PIDFILE="/var/run/$DAEMON.pid"
+
+[ -f $CONFIG ] || exit 0
+
+case "$1" in
+	start)
+		printf "Starting hostapd: "
+		hostapd -B $CONFIG
+		[ $? = 0 ] && echo "OK" || echo "FAIL"
+		;;
+	stop)
+		printf "Stopping hostapd: "
+		killall hostapd
+		[ $? = 0 ] && echo "OK" || echo "FAIL"
+		;;
+	restart|reload)
+		$0 stop
+		$0 start
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+esac
+
+exit 0

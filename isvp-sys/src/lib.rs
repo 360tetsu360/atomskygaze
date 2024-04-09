@@ -5,3 +5,8 @@
 #[allow(clippy::missing_safety_doc)]
 mod wrapper;
 pub use wrapper::*;
+
+extern "C" {
+    pub fn IMP_OSD_SetPoolSize(new_pool_size: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+    

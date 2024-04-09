@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>ATOM skygaze</title>
+        <meta charset="utf-8">
+        <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+    <body>
+        <header></header>
+        <div class="left">
+            <button id="shw_msk">show mask</button>
+            <br>
+            <button id="app_msk">apply mask</button>
+        </div> 
+        <div class="preview">
+            <img id="prev" src="aaa.jpg">
+            <div class="grid-overlay" id="gridOverlay"></div>
+        </div> 
+        <div class="right">
+            <button id="ircut"></button>
+            <br>
+            <button id="flip"></button>
+            <br>
+            <button id="gain"></button>
+            <input type="range" min="0" max="4294967295" id="vgain">
+            <button id="gaintyp">again</button>
+            <br>
+            <button id="proc"></button>
+            <input type="range" min="0" max="255" id="vproc">
+            <button id="proctyp">brt</button>
+            <br>
+            <button id="expr"></button>
+            <input type="range" min="0" max="65535" id="vexpr">
+            <br>
+            <br>
+            <button id="whba"></button>
+            <input type="range" min="0" max="65535" id="vwbr">
+            <input type="range" min="0" max="65535" id="vwbb">
+            <br>
+            <button id="log"></button>
+        </div>
+        <script src="script.js"></script> 
+    </body>
+</html>

@@ -71,9 +71,6 @@ ctrl_interface=/var/run/wpa_supplicant
 update_config=1
 network={
   ssid="$SSID"
-  key_mgmt=WPA-PSK
-  pairwise=CCMP TKIP
-  group=CCMP TKIP WEP104 WEP40
   psk="$PSK"
   scan_ssid=1
 }
