@@ -4,6 +4,7 @@ use axum::extract::{
     State, WebSocketUpgrade,
 };
 use axum::response::IntoResponse;
+use chrono::*;
 use futures::SinkExt;
 use futures::StreamExt;
 use isvp_sys::*;
@@ -15,13 +16,16 @@ type AppState = State<(
     watch::Receiver<Vec<u8>>,
     mpsc::Sender<Vec<u8>>,
     Arc<Mutex<bool>>,
+    Arc<Mutex<Vec<(DateTime<FixedOffset>, DateTime<FixedOffset>)>>>,
 )>;
 
 pub async fn handler(
     ws: WebSocketUpgrade,
-    State((rx, mask_sender, detecting)): AppState,
+    State((rx, mask_sender, detecting, detected)): AppState,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket: WebSocket| handle_socket(socket, rx, mask_sender, detecting))
+    ws.on_upgrade(move |socket: WebSocket| {
+        handle_socket(socket, rx, mask_sender, detecting, detected)
+    })
 }
 
 pub async fn handle_socket(
@@ -29,6 +33,7 @@ pub async fn handle_socket(
     mut rx: watch::Receiver<Vec<u8>>,
     mask_sender: mpsc::Sender<Vec<u8>>,
     detecting: Arc<Mutex<bool>>,
+    detected: Arc<Mutex<Vec<(DateTime<FixedOffset>, DateTime<FixedOffset>)>>>,
 ) {
     let (mut sender, mut receiver) = socket.split();
     tokio::spawn(async move {
@@ -150,6 +155,21 @@ pub async fn handle_socket(
                         } else if text[1] == "off" {
                             *detecting.lock().unwrap() = false;
                         }
+                    } else if text[0] == "trim" {
+                        let start: Result<DateTime<FixedOffset>, _> =
+                            DateTime::parse_from_rfc3339(&text[1]);
+                        let end: Result<DateTime<FixedOffset>, _> =
+                            DateTime::parse_from_rfc3339(&text[2]);
+                        if start.is_err() || end.is_err() {
+                            continue;
+                        }
+
+                        println!("trim!");
+                        detected
+                            .lock()
+                            .unwrap()
+                            .push((start.unwrap(), end.unwrap()));
+                        println!("trim!");
                     } else if text[0] == "log" {
                         let mut eva_attr = IMPISPEVAttr {
                             ev: 0,

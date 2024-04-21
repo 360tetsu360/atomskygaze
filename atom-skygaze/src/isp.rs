@@ -92,7 +92,7 @@ pub unsafe fn log_all_value() {
     };
 
     IMP_ISP_Tuning_GetEVAttr(&mut eva_attr);
-    
+
     println!("ev {}", eva_attr.dgain);
     println!("expr_us {}", eva_attr.dgain);
     println!("ev_log2 {}", eva_attr.dgain);

@@ -15,7 +15,7 @@ pub unsafe fn get_h264_stream() -> bool {
 
     loop {
         let current_time = Local::now() + Duration::hours(9);
-        let next_minute = (current_time.minute() + 1) % 60;
+        let next_minute = current_time.minute() + 1;
 
         let (adjusted_hour, adjusted_minute) = if next_minute >= 60 {
             (current_time.hour() + 1, 0)

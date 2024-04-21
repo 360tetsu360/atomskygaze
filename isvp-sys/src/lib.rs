@@ -7,7 +7,6 @@ mod wrapper;
 pub use wrapper::*;
 
 extern "C" {
-    pub fn snap_pic(file_name: *const i8, fmt: IMPPixelFormat) ->  ::std::os::raw::c_int;
+    pub fn snap_pic(file_name: *const i8, fmt: IMPPixelFormat) -> ::std::os::raw::c_int;
     pub fn IMP_OSD_SetPoolSize(new_pool_size: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
 }
-    

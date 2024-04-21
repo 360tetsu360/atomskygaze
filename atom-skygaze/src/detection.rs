@@ -21,6 +21,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::{mpsc, watch};
 
+type DetectionSender = Arc<Mutex<Vec<(DateTime<FixedOffset>, DateTime<FixedOffset>)>>>;
+
 const RESIZED_X: usize = 32;
 const RESIZED_Y: usize = 18;
 
@@ -371,12 +373,15 @@ pub unsafe fn save_stream() {
 pub unsafe fn start(
     mut mrx: mpsc::Receiver<Vec<u8>>,
     detecting: Arc<Mutex<bool>>, /*, tx: watch::Sender<Vec<u8>>*/
+    sender: DetectionSender,
 ) {
     let mut last_frame_time = 0;
     let mut last_frame: *mut IMPFrameInfo = std::ptr::null_mut();
     let mut last_gray = Mat::default();
     let mut diff_list = VecDeque::<Mat>::with_capacity(10);
     let mut mask = vec![0u8; 32 * 18];
+    let mut detection_start: DateTime<FixedOffset> =
+        Utc::now().with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
 
     let mut file = OpenOptions::new()
         .append(true)
@@ -430,19 +435,30 @@ pub unsafe fn start(
                     let mut fld = create_fast_line_detector(10, 1.732, 33., 66., 3, true).unwrap();
                     fld.detect(&cropped, &mut lines).unwrap();
 
-                    if !lines.is_empty() && detecting_flag == 0 {
+                    if !lines.is_empty() {
                         let now: DateTime<Utc> = Utc::now();
                         let time: DateTime<FixedOffset> =
                             now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
+                        if detecting_flag == 0 {
+                            detection_start = time - Duration::seconds(2);
+                        }
                         println!("[{}] Meteor Detected", time);
-                        detecting_flag = 25;
-
                         writeln!(file, "[{}] detected", time).unwrap();
+                        detecting_flag = 25;
                     }
+                }
+            }
 
-                    if detecting_flag != 0 {
-                        detecting_flag -= 1;
-                    }
+            if detecting_flag != 0 {
+                detecting_flag -= 1;
+                println!("{}", detecting_flag);
+
+                if detecting_flag == 0 {
+                    println!("saving detection");
+                    let now: DateTime<Utc> = Utc::now();
+                    let time: DateTime<FixedOffset> =
+                        now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
+                    sender.lock().unwrap().push((detection_start, time));
                 }
             }
         }
