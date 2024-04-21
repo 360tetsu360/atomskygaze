@@ -8,14 +8,14 @@ PIDFILE="/var/run/$DAEMON.pid"
 
 case "$1" in
 	start)
-		printf "Starting hostapd: "
-		hostapd -B $CONFIG
-		[ $? = 0 ] && echo "OK" || echo "FAIL"
+		#printf "Starting hostapd: "
+		#hostapd -B $CONFIG
+		#[ $? = 0 ] && echo "OK" || echo "FAIL"
 		;;
 	stop)
-		printf "Stopping hostapd: "
-		killall hostapd
-		[ $? = 0 ] && echo "OK" || echo "FAIL"
+		#printf "Stopping hostapd: "
+		#killall hostapd
+		#[ $? = 0 ] && echo "OK" || echo "FAIL"
 		;;
 	restart|reload)
 		$0 stop

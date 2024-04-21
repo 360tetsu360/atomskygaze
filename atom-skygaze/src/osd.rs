@@ -1,30 +1,33 @@
+use crate::font::BITMAP_ARRAY;
+use chrono::*;
 use isvp_sys::*;
-use log::{error, info};
+use log::error;
 
-pub unsafe fn init(grp_num: ::str::os::raw::c_int) -> IMPRgnHandle {
-    let mut font_handle: IMPRgnHandle = IMP_OSD_CreateRgn(0);
-    if IMP_OSD_RegisterRgn(pr_handle, grp_num, 0) < 0 {
+const TEXT_LENGTH: usize = 50;
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub unsafe fn imp_osd_init(grp_num: ::std::os::raw::c_int) -> IMPRgnHandle {
+    let font_handle: IMPRgnHandle = IMP_OSD_CreateRgn(std::ptr::null_mut());
+    if IMP_OSD_RegisterRgn(font_handle, grp_num, std::ptr::null_mut()) < 0 {
         error!("IMP_OSD_RegisterRgn");
         panic!();
     }
 
     let mut font_attr = IMPOSDRgnAttr {
-        type_: IMPOsdRgnType_OSD_REG_PIC,
-        rect: IMPREct {
+        type_: IMPOsdRgnType_OSD_REG_BITMAP,
+        rect: IMPRect {
             p0: IMPPoint {
-                x: 10,
-                y: 10,
+                x: 14,
+                y: 1080 - 20,
             },
             p1: IMPPoint {
-                x: 10 + 20 * 16 -1,
-                y: 10 + 34 - 1,
+                x: 14 + TEXT_LENGTH as i32 * 14 - 1,
+                y: 1080 - 7,
             },
         },
-        fmt: IMPPixelFormat_PIX_FMT_BGRA,
+        fmt: IMPPixelFormat_PIX_FMT_MONOWHITE,
         data: IMPOSDRgnAttrData {
-            picData: picData {
-                pdata: std::ptr::null_mut(),
-            },
+            bitmapData: std::ptr::null_mut(),
         },
     };
 
@@ -35,16 +38,13 @@ pub unsafe fn init(grp_num: ::str::os::raw::c_int) -> IMPRgnHandle {
 
     let mut gr_font_attr = IMPOSDGrpRgnAttr {
         show: 0,
-        offPos: IMPPoint {
-            x: 0,
-            y: 0,
-        },
+        offPos: IMPPoint { x: 0, y: 0 },
         scalex: 0.,
         scaley: 0.,
         gAlphaEn: 0,
         fgAlhpa: 0,
         bgAlhpa: 0,
-        layer: 0
+        layer: 0,
     };
 
     if IMP_OSD_GetGrpRgnAttr(font_handle, grp_num, &mut gr_font_attr) < 0 {
@@ -53,70 +53,115 @@ pub unsafe fn init(grp_num: ::str::os::raw::c_int) -> IMPRgnHandle {
     }
 
     gr_font_attr.show = 0;
-	gr_font_attr.gAlphaEn = 1;
-	gr_font_attr.fgAlhpa = 0xff;
-	gr_font_attr.layer = 3;
+    gr_font_attr.gAlphaEn = 1;
+    gr_font_attr.fgAlhpa = 0xff;
+    gr_font_attr.layer = 3;
 
-	gr_font_attr.scalex = 0.;
-	gr_font_attr.scaley = 0.;
-	gr_font_attr.bgAlhpa = 0;
-	gr_font_attr.offPos = IMPPoint {
-        x: 0,
-        y: 0,
-    };
+    gr_font_attr.scalex = 0.;
+    gr_font_attr.scaley = 0.;
+    gr_font_attr.bgAlhpa = 0;
+    gr_font_attr.offPos = IMPPoint { x: 0, y: 0 };
 
     if IMP_OSD_SetGrpRgnAttr(font_handle, grp_num, &mut gr_font_attr) < 0 {
-		error!("IMP_OSD_SetGrpRgnAttr font error !");
-		panic!();
-	}
+        error!("IMP_OSD_SetGrpRgnAttr font error !");
+        panic!();
+    }
 
-	if IMP_OSD_Start(grp_num) < 0 {
-		error!("IMP_OSD_Start TimeStamp, Logo, Cover and Rect error !");
-		panic!();
-	}
+    if IMP_OSD_Start(grp_num) < 0 {
+        error!("IMP_OSD_Start TimeStamp, Logo, Cover and Rect error !");
+        panic!();
+    }
 
-    return font_handle;
+    font_handle
 }
 
-pub unsafe fn bind() {
+pub unsafe fn imp_osd_bind() -> (::std::os::raw::c_int, IMPRgnHandle) {
     let grp_num = 0;
 
-    let font_handle = init(grp_num);
-    
+    if IMP_OSD_CreateGroup(grp_num) < 0 {
+        error!("IMP_OSD_CreateGroup error !");
+        panic!();
+    }
+
+    let font_handle = imp_osd_init(grp_num);
+
     let mut osdcell = IMPCell {
-        deviceID: DEV_ID_OSD,
-        groupID: grp_num, 
-        outputID: 0
+        deviceID: IMPDeviceID_DEV_ID_OSD,
+        groupID: grp_num,
+        outputID: 0,
     };
 
     let mut fscell = IMPCell {
         deviceID: IMPDeviceID_DEV_ID_FS,
         groupID: 0,
-        outputID: 0
-    };
-
-    let mut enccell IMPCell {
-        deviceID: IMPDeviceID_DEV_ID_ENC,
-        groupID: 0,
-        outputID: 0
+        outputID: 0,
     };
 
     if IMP_System_Bind(&mut fscell, &mut osdcell) < 0 {
         error!("IMP_System_Bind error !");
-		panic!();
+        panic!();
     }
 
-    if IMP_System_Bind(&mut fscell, &mut enccell) < 0 {
-        error!("IMP_System_Bind error !");
-		panic!();
-    }
-
-    let timestamp_data = Vec::<u32>::with_capacity(20 * 34 * 16);
+    (grp_num, font_handle)
 }
 
-unsafe fn osd_show(grp_num: ::str::os::raw::c_int, mut handle: IMPOSDRgnAttr){
-	if IMP_OSD_ShowRgn(&mut handle, 0, 1) {
-		IMP_LOG_ERR(TAG, "IMP_OSD_ShowRgn() timeStamp error\n");
-		return -1;
-	}
+unsafe fn imp_osd_show(grp_num: ::std::os::raw::c_int, font_handle: IMPRgnHandle) -> bool {
+    if IMP_OSD_ShowRgn(font_handle, grp_num, 1) < 0 {
+        error!("IMP_OSD_ShowRgn() timeStamp error");
+        return false;
+    }
+
+    true
+}
+
+pub unsafe fn imp_osd_start(grp_num: ::std::os::raw::c_int, font_handle: IMPRgnHandle) {
+    let mut timestamp_data = vec![0u8; TEXT_LENGTH * 14 * 14];
+
+    if !imp_osd_show(grp_num, font_handle) {
+        error!("OSD show error");
+        return;
+    }
+
+    loop {
+        timestamp_data.fill(0);
+        let now: DateTime<Utc> = Utc::now();
+        let time: DateTime<FixedOffset> =
+            now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
+        let fractional_second = (time.timestamp_subsec_millis() as f64) / 100.0;
+        let text = format!(
+            "{}.{} {}   ATOM-SKYGAZE {}",
+            time.format("%Y-%m-%d %H:%M:%S"),
+            fractional_second as i32,
+            time.format("%:z"),
+            VERSION
+        );
+
+        for (i, c) in text.chars().enumerate() {
+            let char_index = match c {
+                '.' => 0,
+                '-' => 49,
+                '+' => 50,
+                ':' => 12,
+                '0'..='9' => 2 + (c as usize - '0' as usize),
+                'A'..='Z' => 19 + (c as usize - 'A' as usize),
+                ' ' => continue,
+                _ => continue,
+            };
+
+            let base = i * 14;
+            for j in 0..14 {
+                let char_line = &BITMAP_ARRAY
+                    [char_index * 14 * 12 + j * 12..char_index * 14 * 12 + j * 12 + 12];
+                timestamp_data[j * 14 * TEXT_LENGTH + base + 1..j * 14 * TEXT_LENGTH + base + 13]
+                    .copy_from_slice(char_line);
+            }
+        }
+
+        let mut data = IMPOSDRgnAttrData {
+            bitmapData: timestamp_data.as_mut_ptr() as *mut ::std::os::raw::c_void,
+        };
+        IMP_OSD_UpdateRgnAttrData(font_handle, &mut data);
+
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
 }

@@ -7,21 +7,28 @@ use axum::response::IntoResponse;
 use futures::SinkExt;
 use futures::StreamExt;
 use isvp_sys::*;
+use std::sync::Arc;
+use std::sync::Mutex;
 use tokio::sync::{mpsc, watch};
 
-type AppState = State<(watch::Receiver<Vec<u8>>, mpsc::Sender<Vec<u8>>)>;
+type AppState = State<(
+    watch::Receiver<Vec<u8>>,
+    mpsc::Sender<Vec<u8>>,
+    Arc<Mutex<bool>>,
+)>;
 
 pub async fn handler(
     ws: WebSocketUpgrade,
-    State((rx, mask_sender)): AppState,
+    State((rx, mask_sender, detecting)): AppState,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket: WebSocket| handle_socket(socket, rx, mask_sender))
+    ws.on_upgrade(move |socket: WebSocket| handle_socket(socket, rx, mask_sender, detecting))
 }
 
 pub async fn handle_socket(
     socket: WebSocket,
     mut rx: watch::Receiver<Vec<u8>>,
     mask_sender: mpsc::Sender<Vec<u8>>,
+    detecting: Arc<Mutex<bool>>,
 ) {
     let (mut sender, mut receiver) = socket.split();
     tokio::spawn(async move {
@@ -125,6 +132,24 @@ pub async fn handle_socket(
                                 IMP_ISP_Tuning_SetGamma(&mut gamma);
                             }
                         }
+                    } else if text[0] == "mode" {
+                        unsafe {
+                            if text[1] == "day" {
+                                IMP_ISP_Tuning_SetISPRunningMode(
+                                    IMPISPRunningMode_IMPISP_RUNNING_MODE_DAY,
+                                );
+                            } else if text[1] == "night" {
+                                IMP_ISP_Tuning_SetISPRunningMode(
+                                    IMPISPRunningMode_IMPISP_RUNNING_MODE_NIGHT,
+                                );
+                            }
+                        }
+                    } else if text[0] == "det" {
+                        if text[1] == "on" {
+                            *detecting.lock().unwrap() = true;
+                        } else if text[1] == "off" {
+                            *detecting.lock().unwrap() = false;
+                        }
                     } else if text[0] == "log" {
                         let mut eva_attr = IMPISPEVAttr {
                             ev: 0,
@@ -193,7 +218,9 @@ pub async fn handle_socket(
     tokio::spawn(async move {
         while (rx.changed().await).is_ok() {
             let img = rx.borrow_and_update().clone();
-            sender.send(Message::Binary(img)).await.unwrap();
+            if sender.send(Message::Binary(img)).await.is_err() {
+                break;
+            }
         }
     });
 }

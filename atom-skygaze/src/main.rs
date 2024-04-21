@@ -1,23 +1,28 @@
 #![allow(dead_code)]
+#![feature(div_duration)]
 
+use crate::detection::*;
 use crate::gpio::*;
 use crate::imp::*;
-use crate::isp::*;
+use crate::osd::*;
 use crate::record::*;
 use crate::websocket::*;
 use axum::routing::get;
 use axum::Router;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread;
 use std::{net::SocketAddr, path::PathBuf};
 use tokio::sync::{mpsc, watch};
-use tower_http::{
-    services::ServeDir,
-};
+use tower_http::services::ServeDir;
+use crate::isp::log_all_value;
 
 mod detection;
+mod font;
 mod gpio;
 mod imp;
 mod isp;
+mod osd;
 mod record;
 mod websocket;
 
@@ -25,31 +30,53 @@ mod websocket;
 async fn main() {
     env_logger::init();
 
-    println!("HelloA!!!");
-
-    let (_tx, rx) = watch::channel(vec![]);
-    let (mtx, _mrx) = mpsc::channel(2);
+    let (tx, rx) = watch::channel(vec![]);
+    let (mtx, mrx) = mpsc::channel(2);
+    let is_detecting = Arc::new(Mutex::new(false));
 
     gpio_init().unwrap();
 
-    thread::spawn(|| {
-        unsafe {
-            imp_init();
-            log_all_value();
-            imp_framesource_init();
-            imp_encoder_init();
-            //imp_jpeg_init();
-            imp_avc_init();
-            imp_framesource_start();
-            //IMP_ISP_Tuning_SetISPBypass(IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE);
-            //thread::spawn(|| {
-            //    get_timelapse_h264_stream();
-            //});
-            get_h264_stream();
-            //jpeg_start(tx);
-            //init();
-            //start(tx, mrx);
+    let is_detecting_instance = is_detecting.clone();
+    thread::spawn(move || {
+        let mut blue_on = false;
+        loop {
+            if !*is_detecting_instance.lock().unwrap() {
+                if blue_on {
+                    led_off(LEDType::Blue).unwrap();
+                    led_on(LEDType::Orange).unwrap();
+                } else {
+                    led_off(LEDType::Orange).unwrap();
+                    led_on(LEDType::Blue).unwrap();
+                }
+
+                blue_on = !blue_on;
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(500));
         }
+    });
+    let is_detecting_instance = is_detecting.clone();
+    thread::spawn(|| unsafe {
+        imp_init();
+        log_all_value();
+        imp_framesource_init();
+        imp_encoder_init();
+        let (grp_num, font_handle) = imp_osd_bind();
+        imp_jpeg_init();
+        imp_avc_init();
+        imp_framesource_start();
+        init();
+        thread::spawn(move || {
+            imp_osd_start(grp_num, font_handle);
+        });
+        thread::spawn(|| {
+            get_h264_stream();
+        });
+        thread::spawn(|| {
+            jpeg_start(tx);
+        });
+
+        start(mrx, is_detecting_instance);
     });
 
     let assets_dir = PathBuf::from("/media/mmc/assets/");
@@ -57,7 +84,7 @@ async fn main() {
     let app = Router::new()
         .fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
         .route("/ws", get(handler))
-        .with_state((rx, mtx));
+        .with_state((rx, mtx, is_detecting));
 
     // run it with hyper
     let listener = tokio::net::TcpListener::bind("0.0.0.0:80").await.unwrap();

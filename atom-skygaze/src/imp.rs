@@ -1,11 +1,10 @@
 use isvp_sys::*;
 use log::error;
 use std::os::raw::c_void;
-
 use std::ptr::addr_of_mut;
 
 const SENSOR_NAME: &[u8] = b"gc2053";
-const BITRATE_720P_KBS: u32 = 1000;
+const BITRATE_720P_KBS: u32 = 500;
 const SENSOR_WIDTH: i32 = 1920;
 const SENSOR_HEIGHT: i32 = 1080;
 
@@ -84,6 +83,8 @@ static mut CHANNEL_ATTRIBUTES: [IMPFSChnAttr; 2] = [
 ];
 
 pub unsafe fn imp_init() -> bool {
+    IMP_OSD_SetPoolSize(512 * 1024);
+
     SENSOR_INFO.name[..SENSOR_NAME.len()]
         .copy_from_slice(std::mem::transmute::<&[u8], &[i8]>(SENSOR_NAME));
     SENSOR_INFO.__bindgen_anon_1.i2c.type_[..SENSOR_NAME.len()]
@@ -282,7 +283,7 @@ pub unsafe fn imp_encoder_init() -> bool {
         gopAttr: IMPEncoderGopAttr {
             uGopCtrlMode: 0,
             uGopLength: 0,
-            uNumB: 0,
+            uNotifyUserLTInter: 0,
             uMaxSameSenceCnt: 0,
             bEnableLT: false,
             uFreqLT: 0,
@@ -380,7 +381,7 @@ pub unsafe fn imp_encoder_init() -> bool {
         gopAttr: IMPEncoderGopAttr {
             uGopCtrlMode: 0,
             uGopLength: 0,
-            uNumB: 0,
+            uNotifyUserLTInter: 0,
             uMaxSameSenceCnt: 0,
             bEnableLT: false,
             uFreqLT: 0,
@@ -453,7 +454,7 @@ pub unsafe fn imp_jpeg_init() -> bool {
         gopAttr: IMPEncoderGopAttr {
             uGopCtrlMode: 0,
             uGopLength: 0,
-            uNumB: 0,
+            uNotifyUserLTInter: 0,
             uMaxSameSenceCnt: 0,
             bEnableLT: false,
             uFreqLT: 0,
@@ -543,7 +544,7 @@ pub unsafe fn imp_avc_init() -> bool {
         gopAttr: IMPEncoderGopAttr {
             uGopCtrlMode: 0,
             uGopLength: 0,
-            uNumB: 0,
+            uNotifyUserLTInter: 0,
             uMaxSameSenceCnt: 0,
             bEnableLT: false,
             uFreqLT: 0,
@@ -553,7 +554,7 @@ pub unsafe fn imp_avc_init() -> bool {
 
     if IMP_Encoder_SetDefaultParam(
         &mut channel_attr,
-        IMPEncoderProfile_IMP_ENC_PROFILE_AVC_MAIN,
+        IMPEncoderProfile_IMP_ENC_PROFILE_HEVC_MAIN,
         IMPEncoderRcMode_IMP_ENC_RC_MODE_CBR,
         SENSOR_WIDTH as u16,
         SENSOR_HEIGHT as u16,
@@ -569,27 +570,25 @@ pub unsafe fn imp_avc_init() -> bool {
         return false;
     }
 
-    //channel_attr.encAttr.ePicFormat = IMPEncoderPicFormat_IMP_ENC_PIC_FORMAT_400_8BITS;
+    let ratio = 1.0 / (f32::log10((1920. * 1080.) / (640. * 360.)) + 1.0);
+    let bitrate = (BITRATE_720P_KBS as f32 * ratio) as u32;
+
     channel_attr.rcAttr.attrRcMode = IMPEncoderAttrRcMode {
-        rcMode: IMPEncoderRcMode_IMP_ENC_RC_MODE_CBR,
+        rcMode: IMPEncoderRcMode_IMP_ENC_RC_MODE_VBR,
         __bindgen_anon_1: IMPEncoderAttrRcMode__bindgen_ty_1 {
-            attrCbr: IMPEncoderAttrCbr {
-                uTargetBitRate: 360,
+            attrVbr: IMPEncoderAttrVbr {
+                uTargetBitRate: bitrate,
+                uMaxBitRate: bitrate * 4 / 3,
                 iInitialQP: -1,
-                iMinQP: i16::MAX,
-                iMaxQP: i16::MAX,
-                iIPDelta: 0,
-                iPBDelta: 0,
+                iMinQP: 34,
+                iMaxQP: 51,
+                iIPDelta: -1,
+                iPBDelta: -1,
                 eRcOptions: IMPEncoderRcOptions_IMP_ENC_RC_STATIC_SCENE,
-                uMaxPictureSize: 360,
+                uMaxPictureSize: bitrate * 4 / 3,
             },
         },
     };
-
-    /*if IMP_Encoder_SetFisheyeEnableStatus(3, 1) < 0 {
-        error!("IMP_Encoder_SetFisheyeEnableStatus failed");
-        return false;
-    }*/
 
     if IMP_Encoder_CreateChn(3, &channel_attr) < 0 {
         error!("IMP_Encoder_CreateChn failed");
@@ -597,120 +596,6 @@ pub unsafe fn imp_avc_init() -> bool {
     }
 
     if IMP_Encoder_RegisterChn(0, 3) < 0 {
-        error!("IMP_Encoder_RegisterChn failed");
-        return false;
-    }
-
-    let mut framesource_chn = IMPCell {
-        deviceID: IMPDeviceID_DEV_ID_FS,
-        groupID: 0,
-        outputID: 0,
-    };
-
-    let mut imp_encoder = IMPCell {
-        deviceID: IMPDeviceID_DEV_ID_ENC,
-        groupID: 0,
-        outputID: 0,
-    };
-
-    if IMP_System_Bind(&mut framesource_chn, &mut imp_encoder) < 0 {
-        error!("IMP_System_Bind failed");
-        return false;
-    }
-
-    //////
-
-    let mut channel_attr = IMPEncoderChnAttr {
-        encAttr: IMPEncoderEncAttr {
-            eProfile: 0,
-            uLevel: 0,
-            uTier: 0,
-            uWidth: 0,
-            uHeight: 0,
-            ePicFormat: 0,
-            eEncOptions: 0,
-            eEncTools: 0,
-            crop: IMPEncoderCropCfg {
-                enable: false,
-                x: 0,
-                y: 0,
-                w: 0,
-                h: 0,
-            },
-        },
-        rcAttr: IMPEncoderRcAttr {
-            attrRcMode: IMPEncoderAttrRcMode {
-                rcMode: 0,
-                __bindgen_anon_1: IMPEncoderAttrRcMode__bindgen_ty_1 {
-                    attrFixQp: IMPEncoderAttrFixQP { iInitialQP: 0 },
-                },
-            },
-            outFrmRate: IMPEncoderFrmRate {
-                frmRateNum: 0,
-                frmRateDen: 0,
-            },
-        },
-        gopAttr: IMPEncoderGopAttr {
-            uGopCtrlMode: 0,
-            uGopLength: 0,
-            uNumB: 0,
-            uMaxSameSenceCnt: 0,
-            bEnableLT: false,
-            uFreqLT: 0,
-            bLTRC: false,
-        },
-    };
-
-    let bitrate: f32 = 2000.0 * (1920. * 1080.) / (1280. * 720.);
-
-    if IMP_Encoder_SetDefaultParam(
-        &mut channel_attr,
-        IMPEncoderProfile_IMP_ENC_PROFILE_AVC_MAIN,
-        IMPEncoderRcMode_IMP_ENC_RC_MODE_VBR,
-        SENSOR_WIDTH as u16,
-        SENSOR_HEIGHT as u16,
-        1,
-        1,
-        2,
-        2,
-        -1,
-        bitrate.round() as u32,
-    ) < 0
-    {
-        error!("IMP_Encoder_SetDefaultParam failed");
-        return false;
-    }
-
-    //channel_attr.encAttr.ePicFormat = IMPEncoderPicFormat_IMP_ENC_PIC_FORMAT_400_8BITS;
-    channel_attr.rcAttr.attrRcMode = IMPEncoderAttrRcMode {
-        rcMode: IMPEncoderRcMode_IMP_ENC_RC_MODE_VBR,
-        __bindgen_anon_1: IMPEncoderAttrRcMode__bindgen_ty_1 {
-            attrVbr: IMPEncoderAttrVbr {
-                uTargetBitRate: bitrate.round() as u32,
-                uMaxBitRate: bitrate.round() as u32 * 4 / 3,
-                iInitialQP: -1,
-                iMinQP: 34,
-                iMaxQP: 51,
-                iIPDelta: -1,
-                iPBDelta: -1,
-                eRcOptions: IMPEncoderRcOptions_IMP_ENC_RC_SCN_CHG_RES
-                    | IMPEncoderRcOptions_IMP_ENC_RC_OPT_SC_PREVENTION,
-                uMaxPictureSize: bitrate.round() as u32 * 4 / 3,
-            },
-        },
-    };
-
-    /*if IMP_Encoder_SetFisheyeEnableStatus(3, 1) < 0 {
-        error!("IMP_Encoder_SetFisheyeEnableStatus failed");
-        return false;
-    }*/
-
-    if IMP_Encoder_CreateChn(4, &channel_attr) < 0 {
-        error!("IMP_Encoder_CreateChn failed");
-        return false;
-    }
-
-    if IMP_Encoder_RegisterChn(0, 4) < 0 {
         error!("IMP_Encoder_RegisterChn failed");
         return false;
     }
@@ -869,6 +754,7 @@ pub unsafe fn imp_ivs_move_start(interface: &mut *mut IMPIVSInterface) -> bool {
             phyAddr: 0,
             virAddr: 0,
             timeStamp: 0,
+            rotate_osdflag: 0,
             priv_: __IncompleteArrayField::<u32>::new(),
         },
         roiRect: [IMPRect {

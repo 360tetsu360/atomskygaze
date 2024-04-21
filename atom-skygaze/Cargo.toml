@@ -8,7 +8,7 @@ authors = ["tmmgq"]
 
 [dependencies]
 fitsio = { version = "0.21.2", features = ["fitsio-src"] }
-opencv = { version = "0.89", features = ["video", "videoio", "imgproc", "imgcodecs", "gapi", "bgsegm", "ximgproc", "clang-runtime"] }
+opencv = { version = "0.89", features = ["videoio", "imgproc", "imgcodecs", "gapi", "video", "calib3d", "features2d", "flann", "ximgproc", "clang-runtime"] }
 isvp-sys = { path = "../isvp-sys" }
 env_logger = "0.11.3"
 log = "0.4.21"

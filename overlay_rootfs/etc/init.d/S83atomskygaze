@@ -11,6 +11,15 @@ case "$1" in
     insmod /atom/system/driver/sample_pwm_hal.ko
     insmod /atom/system/driver/speaker_ctl.ko
     insmod /atom/system/driver/sensor_gc2053_t31.ko data_interface=1
+
+    if [ ! -d /media/mmc/records ]; then
+      mkdir -p /media/mmc/records
+    fi
+
+    if [ ! -d /media/mmc/records/regular ]; then
+      mkdir -p /media/mmc/records/regular
+    fi
+
     if [ -f /media/mmc/atom-skygaze ]; then
       /media/mmc/atom-skygaze
     else

@@ -1,12 +1,24 @@
+use chrono::*;
+//use fitsio::images::ImageDescription;
+//use fitsio::images::ImageType;
+//use fitsio::FitsFile;
 use isvp_sys::*;
 use log::error;
 use opencv::core::*;
-use opencv::imgcodecs::imencode;
-use opencv::imgproc::*;
+//use opencv::imgcodecs::imencode;
+//use opencv::imgcodecs::imencode_def;
+//use opencv::imgproc;
+//use opencv::imgproc::*;
+use opencv::prelude::FastLineDetectorTrait;
+use opencv::ximgproc::create_fast_line_detector;
 use std::collections::VecDeque;
+use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::Cursor;
 use std::io::Write;
 use std::os::raw::c_void;
+use std::sync::Arc;
+use std::sync::Mutex;
 use tokio::sync::{mpsc, watch};
 
 const RESIZED_X: usize = 32;
@@ -98,7 +110,7 @@ impl Blob {
 }
 
 pub unsafe fn init() -> bool {
-    if IMP_FrameSource_SetFrameDepth(0, 13) < 0 {
+    if IMP_FrameSource_SetFrameDepth(0, 2) < 0 {
         error!("IMP_FrameSource_SetFrameDepth failed");
         return false;
     }
@@ -130,6 +142,21 @@ pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>) -> bool {
             pack: std::ptr::null_mut(),
             packCount: 0,
             seq: 0,
+            isVI: false,
+            __bindgen_anon_1: IMPEncoderStream__bindgen_ty_1 {
+                streamInfo: IMPEncoderStreamInfo {
+                    iNumBytes: 0,
+                    uNumIntra: 0,
+                    uNumSkip: 0,
+                    uNumCU8x8: 0,
+                    uNumCU16x16: 0,
+                    uNumCU32x32: 0,
+                    uNumCU64x64: 0,
+                    iSliceQP: 0,
+                    iMinQP: 0,
+                    iMaxQP: 0,
+                },
+            },
         };
 
         if IMP_Encoder_GetStream(2, &mut stream, true) < 0 {
@@ -143,7 +170,7 @@ pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>) -> bool {
         );
         for pack in stream_packs {
             if pack.length > 0 {
-                let mut jpeg_buffer = vec![];
+                let jpeg_buffer = vec![];
                 let mut cursor = Cursor::new(jpeg_buffer);
                 let rem_size = stream.streamSize - pack.offset;
                 if rem_size < pack.length {
@@ -174,8 +201,6 @@ pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>) -> bool {
             return false;
         }
     }
-
-    true
 }
 
 struct Point {
@@ -193,12 +218,12 @@ fn find_bounding_rectangles(image: &Vec<Vec<u8>>) -> Vec<Blob> {
             if image[y][x] == 1 && !visited[y][x] {
                 let mut min = Point {
                     x: usize::MAX,
-                    y: usize::MAX
+                    y: usize::MAX,
                 };
 
                 let mut max = Point {
                     x: usize::MIN,
-                    y: usize::MIN
+                    y: usize::MIN,
                 };
 
                 let mut pix_cnt = 0;
@@ -212,7 +237,7 @@ fn find_bounding_rectangles(image: &Vec<Vec<u8>>) -> Vec<Blob> {
                 );
                 bounding_rectangles.push(Blob::new(
                     min.x as i32,
-                    min.x as i32,
+                    min.y as i32,
                     (max.x - min.x + 1) as i32,
                     (max.y - min.y + 1) as i32,
                     pix_cnt,
@@ -239,10 +264,10 @@ fn dfs(
     }
 
     visited[y][x] = true;
-    (*min).x = min.x.min(x);
-    (*min).y = min.y.min(y);
-    (*max).x = max.x.max(x);
-    (*max).y = max.y.max(y);
+    min.x = min.x.min(x);
+    min.y = min.y.min(y);
+    max.x = max.x.max(x);
+    max.y = max.y.max(y);
     *pix_cnt += 1;
 
     let deltas = [
@@ -259,7 +284,12 @@ fn dfs(
         let new_x = (x as i32 + dx) as usize;
         let new_y = (y as i32 + dy) as usize;
         dfs(
-            image, visited, Point{x:new_x, y:new_y}, min, max, pix_cnt,
+            image,
+            visited,
+            Point { x: new_x, y: new_y },
+            min,
+            max,
+            pix_cnt,
         );
     }
 }
@@ -278,7 +308,8 @@ fn get_move_area(diff: &Mat, mask: &[u8]) -> Vec<Blob> {
                 (mean[0], stddev[0])
             };
 
-            let thresh_val = mean + stddev * 10.;
+            //println!("stddev {}, mean {}", stddev, mean);
+            let thresh_val = mean + stddev * 2.;
 
             let bin = if thresh_val > 30. && mask[(y * 32 + x) as usize] != 1 {
                 1u8
@@ -304,24 +335,59 @@ fn composite(diff_list: &mut VecDeque<Mat>) -> Mat {
     res
 }
 
-pub unsafe fn start(tx: watch::Sender<Vec<u8>>, mut mrx: mpsc::Receiver<Vec<u8>>) {
+pub unsafe fn save_stream() {
+    let mut cnt = 0;
+    let mut last_time = std::time::Instant::now();
+    loop {
+        let fd = File::create(&format!("/media/mmc/tmp/{}", cnt)).unwrap();
+        let mut writer = std::io::BufWriter::new(fd);
+        let mut full_frame: *mut IMPFrameInfo = std::ptr::null_mut();
+
+        IMP_FrameSource_GetFrame(0, &mut full_frame);
+        let img_buffer = std::slice::from_raw_parts(
+            (*full_frame).virAddr as *const u8,
+            (*full_frame).size as usize,
+        );
+        writer.write_all(img_buffer).unwrap();
+        println!(
+            "{}",
+            std::time::Instant::now()
+                .duration_since(last_time)
+                .as_micros()
+        );
+        println!(
+            "s {}, w {}, h {}",
+            (*full_frame).size,
+            (*full_frame).width,
+            (*full_frame).height
+        );
+        last_time = std::time::Instant::now();
+        IMP_FrameSource_ReleaseFrame(0, full_frame);
+        writer.flush().unwrap();
+        cnt += 1;
+    }
+}
+
+pub unsafe fn start(
+    mut mrx: mpsc::Receiver<Vec<u8>>,
+    detecting: Arc<Mutex<bool>>, /*, tx: watch::Sender<Vec<u8>>*/
+) {
     let mut last_frame_time = 0;
     let mut last_frame: *mut IMPFrameInfo = std::ptr::null_mut();
     let mut last_gray = Mat::default();
     let mut diff_list = VecDeque::<Mat>::with_capacity(10);
     let mut mask = vec![0u8; 32 * 18];
 
-    let mut full_frame_list = VecDeque::new();
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("/media/mmc/meteor_log.txt")
+        .unwrap();
 
+    let mut detecting_flag = 0;
+
+    let _index = 0u128;
     loop {
-        let mut full_frame: *mut IMPFrameInfo = std::ptr::null_mut();
-
-        IMP_FrameSource_GetFrame(0, &mut full_frame);
-        full_frame_list.push_back(full_frame);
-        if full_frame_list.len() == 12 {
-            IMP_FrameSource_ReleaseFrame(0, full_frame_list.pop_front().unwrap());
-        }
-
         let mut new_frame: *mut IMPFrameInfo = std::ptr::null_mut();
         if let Ok(msk) = mrx.try_recv() {
             mask = msk;
@@ -329,8 +395,6 @@ pub unsafe fn start(tx: watch::Sender<Vec<u8>>, mut mrx: mpsc::Receiver<Vec<u8>>
 
         IMP_FrameSource_GetFrame(1, &mut new_frame);
         last_frame_time = (*new_frame).timeStamp;
-
-        let start = std::time::Instant::now();
 
         let (img_width, img_height) = ((*new_frame).width, (*new_frame).height);
         let new_gray = Mat::new_rows_cols_with_data_def(
@@ -341,29 +405,22 @@ pub unsafe fn start(tx: watch::Sender<Vec<u8>>, mut mrx: mpsc::Receiver<Vec<u8>>
         )
         .unwrap();
 
-        let nv12 = Mat::new_rows_cols_with_data_def(
-            (img_height + img_height / 2) as i32,
-            img_width as i32,
-            CV_8UC1,
-            (*new_frame).virAddr as *mut c_void,
-        )
-        .unwrap();
-        let mut colored = Mat::default();
-        cvt_color_def(&nv12, &mut colored, COLOR_YUV2RGB_NV12).unwrap();
-
-        /*
-        if last_frame != std::ptr::null_mut() {
+        if *detecting.lock().unwrap() && !last_frame.is_null() {
             let mut diff = Mat::default();
 
             absdiff(&new_gray, &last_gray, &mut diff).unwrap();
+            //let mut jpeg_buff = Vector::<u8>::new();
+            //imencode_def(".jpg", &diff, &mut jpeg_buff).unwrap();
+            //tx.send(jpeg_buff.to_vec()).unwrap();
 
             diff_list.push_back(diff);
 
             if diff_list.len() == 10 {
                 let integrated_diff = composite(&mut diff_list);
-                let mut boxes = get_move_area(&integrated_diff, &mask);
+                let boxes = get_move_area(&integrated_diff, &mask);
+                //println!("{}", boxes.len());
                 for rect in boxes.iter() {
-                    if rect.pix_cnt > 10 {
+                    if rect.pix_cnt > 20 {
                         println!("Too Big Roi!");
                         continue;
                     }
@@ -373,28 +430,27 @@ pub unsafe fn start(tx: watch::Sender<Vec<u8>>, mut mrx: mpsc::Receiver<Vec<u8>>
                     let mut fld = create_fast_line_detector(10, 1.732, 33., 66., 3, true).unwrap();
                     fld.detect(&cropped, &mut lines).unwrap();
 
-                    for line in lines.iter() {
-                        imgproc::line(
-                            &mut colored,
-                            Point::new(line[0] + rect.x * 20, line[1] + rect.y * 20),
-                            Point::new(line[2] + rect.x * 20, line[3] + rect.y * 20),
-                            Scalar::from((0, 0, 255)),
-                            3,
-                            LINE_8,
-                            0,
-                        )
-                        .unwrap();
+                    if !lines.is_empty() && detecting_flag == 0 {
+                        let now: DateTime<Utc> = Utc::now();
+                        let time: DateTime<FixedOffset> =
+                            now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
+                        println!("[{}] Meteor Detected", time);
+                        detecting_flag = 25;
+
+                        writeln!(file, "[{}] detected", time).unwrap();
+                    }
+
+                    if detecting_flag != 0 {
+                        detecting_flag -= 1;
                     }
                 }
             }
-        }*/
-
-        let mut buffer = Vector::new();
-        imencode(".jpg", &colored, &mut buffer, &Vector::new()).unwrap();
-        tx.send(buffer.to_vec()).unwrap();
+        }
 
         IMP_FrameSource_ReleaseFrame(1, last_frame);
         last_frame = new_frame;
         last_gray = new_gray;
     }
 }
+
+//fn save_nv12_tofits(nv12_buffer: &[u8], _path: &Path) {}

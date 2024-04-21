@@ -38,20 +38,11 @@ pub unsafe fn log_all_value() {
     };
 
     IMP_ISP_Tuning_GetExpr(&mut vexpr);
-    match vexpr {
-        IMPISPExpr { g_attr } => {
-            println!("g_attr mode {}", vexpr.g_attr.mode);
-            println!("g_attr time {}", vexpr.g_attr.integration_time);
-            println!("g_attr tmin {}", vexpr.g_attr.integration_time_min);
-            println!("g_attr tmax {}", vexpr.g_attr.integration_time_max);
-            println!("g_attr inus {}", vexpr.g_attr.one_line_expr_in_us);
-        }
-        IMPISPExpr { s_attr } => {
-            println!("s_attr mode {}", vexpr.s_attr.mode);
-            println!("s_attr unit {}", vexpr.s_attr.unit);
-            println!("s_attr time {}", vexpr.s_attr.time);
-        }
-    };
+    println!("g_attr mode {}", vexpr.g_attr.mode);
+    println!("g_attr time {}", vexpr.g_attr.integration_time);
+    println!("g_attr tmin {}", vexpr.g_attr.integration_time_min);
+    println!("g_attr tmax {}", vexpr.g_attr.integration_time_max);
+    println!("g_attr inus {}", vexpr.g_attr.one_line_expr_in_us);
 
     let mut vwb = IMPISPWB {
         mode: 0,
@@ -101,30 +92,11 @@ pub unsafe fn log_all_value() {
     };
 
     IMP_ISP_Tuning_GetEVAttr(&mut eva_attr);
-    dbg!(eva_attr);
-
-    let mut gamma = IMPISPGamma { gamma: [0u16; 129] };
-    IMP_ISP_Tuning_GetGamma(&mut gamma);
-    dbg!(gamma);
-
-    //let mut gamma2 = IMPISPGamma { gamma: [0u16; 129] };
-    //IMP_ISP_Tuning_SetGamma(&mut gamma2);
-
-    //let mut gamma = IMPISPGamma { gamma: [0u16; 129] };
-    //IMP_ISP_Tuning_GetGamma(&mut gamma);
-
-    let mut comp = 0;
-    IMP_ISP_Tuning_GetAeComp(&mut comp);
-    IMP_ISP_Tuning_SetAeComp(10 * 0x19 + 0x80);
-    dbg!(comp);
-    IMP_ISP_Tuning_GetAeLuma(&mut comp);
-    dbg!(comp);
-
-    let mut m = isp_core_rgb_coefft_wb_attr {
-        rgb_coefft_wb_r: 0,
-        rgb_coefft_wb_g: 0,
-        rgb_coefft_wb_b: 0,
-    };
-
-    IMP_ISP_Tuning_Awb_GetRgbCoefft(&mut m);
+    
+    println!("ev {}", eva_attr.dgain);
+    println!("expr_us {}", eva_attr.dgain);
+    println!("ev_log2 {}", eva_attr.dgain);
+    println!("again {}", eva_attr.dgain);
+    println!("dgain {}", eva_attr.dgain);
+    println!("gain_log2 {}", eva_attr.gain_log2);
 }

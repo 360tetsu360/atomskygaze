@@ -145,3 +145,23 @@ pub fn ircut_off() -> std::io::Result<()> {
 pub fn irled_on() -> std::io::Result<()> {
     GPIO_LED_IR.set_value(1)
 }
+
+#[derive(Copy, Clone, Debug)]
+pub enum LEDType {
+    Orange,
+    Blue,
+}
+
+pub fn led_on(led: LEDType) -> std::io::Result<()> {
+    match led {
+        LEDType::Orange => GPIO_LED_ORANGE.set_value(1),
+        LEDType::Blue => GPIO_LED_BLUE.set_value(1),
+    }
+}
+
+pub fn led_off(led: LEDType) -> std::io::Result<()> {
+    match led {
+        LEDType::Orange => GPIO_LED_ORANGE.set_value(0),
+        LEDType::Blue => GPIO_LED_BLUE.set_value(0),
+    }
+}
