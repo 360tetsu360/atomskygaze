@@ -18,11 +18,11 @@ ATOM Cam2で流星観測をするためのハックです。<br>
       - [x] 32x18の領域のうち検出しない領域をWebUIで簡単に設定
     - 保存
       - [x] 検知した時間をmicroSD配下のmeteor_log.txtに保存
-      - [x] RAW画像を取得しFITSで保存
+      - [ ] RAW画像を取得しFITSで保存
  - WebUI
  - Webhook
    - Discord
-     - Discordのメッセージチャンネルに検出ログを送信
+     - [ ] Discordのメッセージチャンネルに検出ログを送信
 
 # 使用方法
 ATOM Tech純正アプリで一度WiFiに接続したのち、factory_t31_ZMC6tiIDQNとrootfs_hack.squashfsを入れたMicroSDを挿入し起動。
