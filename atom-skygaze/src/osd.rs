@@ -39,8 +39,8 @@ pub unsafe fn imp_osd_init(grp_num: ::std::os::raw::c_int) -> IMPRgnHandle {
     let mut gr_font_attr = IMPOSDGrpRgnAttr {
         show: 0,
         offPos: IMPPoint { x: 0, y: 0 },
-        scalex: 0.,
-        scaley: 0.,
+        scalex: 2.,
+        scaley: 2.,
         gAlphaEn: 0,
         fgAlhpa: 0,
         bgAlhpa: 0,
@@ -57,8 +57,8 @@ pub unsafe fn imp_osd_init(grp_num: ::std::os::raw::c_int) -> IMPRgnHandle {
     gr_font_attr.fgAlhpa = 0xff;
     gr_font_attr.layer = 3;
 
-    gr_font_attr.scalex = 0.;
-    gr_font_attr.scaley = 0.;
+    gr_font_attr.scalex = 2.;
+    gr_font_attr.scaley = 2.;
     gr_font_attr.bgAlhpa = 0;
     gr_font_attr.offPos = IMPPoint { x: 0, y: 0 };
 
@@ -129,7 +129,7 @@ pub unsafe fn imp_osd_start(grp_num: ::std::os::raw::c_int, font_handle: IMPRgnH
             now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
         let fractional_second = (time.timestamp_subsec_millis() as f64) / 100.0;
         let text = format!(
-            "{}.{} {}   ATOM-SKYGAZE {}",
+            "{}.{} {}   ATOM-SKYGAZE v{}",
             time.format("%Y-%m-%d %H:%M:%S"),
             fractional_second as i32,
             time.format("%:z"),
@@ -144,6 +144,7 @@ pub unsafe fn imp_osd_start(grp_num: ::std::os::raw::c_int, font_handle: IMPRgnH
                 ':' => 12,
                 '0'..='9' => 2 + (c as usize - '0' as usize),
                 'A'..='Z' => 19 + (c as usize - 'A' as usize),
+                'v' => 51,
                 ' ' => continue,
                 _ => continue,
             };

@@ -9,18 +9,21 @@ use opencv::core::*;
 //use opencv::imgcodecs::imencode_def;
 //use opencv::imgproc;
 //use opencv::imgproc::*;
+use flate2::write::DeflateEncoder;
+use flate2::Compression;
+use lz4::EncoderBuilder;
 use opencv::prelude::FastLineDetectorTrait;
 use opencv::ximgproc::create_fast_line_detector;
 use std::collections::VecDeque;
-use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Cursor;
 use std::io::Write;
 use std::os::raw::c_void;
 use std::sync::Arc;
 use std::sync::Mutex;
+use tokio::fs::File;
+use tokio::io::BufWriter;
 use tokio::sync::{mpsc, watch};
-
 type DetectionSender = Arc<Mutex<Vec<(DateTime<FixedOffset>, DateTime<FixedOffset>)>>>;
 
 const RESIZED_X: usize = 32;
@@ -337,36 +340,69 @@ fn composite(diff_list: &mut VecDeque<Mat>) -> Mat {
     res
 }
 
-pub unsafe fn save_stream() {
-    let mut cnt = 0;
+pub async fn save_stream_s(mut rx: mpsc::Receiver<(u32, String)>) {
+    while let Some((frame_addr, file_name)) = rx.recv().await {
+        tokio::spawn(async move {
+            let file = File::create(&file_name).await.unwrap();
+            let mut buf_writer = BufWriter::new(file);
+            unsafe {
+                let img_buffer = std::slice::from_raw_parts(
+                    (*std::mem::transmute::<u32, *mut IMPFrameInfo>(frame_addr)).virAddr
+                        as *const u8,
+                    (*std::mem::transmute::<u32, *mut IMPFrameInfo>(frame_addr)).size as usize,
+                );
+
+                let start = std::time::Instant::now();
+
+                tokio::io::AsyncWriteExt::write_all(&mut buf_writer, img_buffer)
+                    .await
+                    .unwrap();
+
+                println!(
+                    "encoding time {}",
+                    std::time::Instant::now().duration_since(start).as_micros()
+                );
+
+                let st = std::time::Instant::now();
+                IMP_FrameSource_ReleaseFrame(
+                    0,
+                    std::mem::transmute::<u32, *mut IMPFrameInfo>(frame_addr),
+                );
+                println!(
+                    "release {}",
+                    std::time::Instant::now().duration_since(st).as_micros()
+                );
+            }
+        });
+    }
+}
+
+pub unsafe fn save_stream(tx: mpsc::Sender<(u32, String)>) {
     let mut last_time = std::time::Instant::now();
     loop {
-        let fd = File::create(&format!("/media/mmc/tmp/{}", cnt)).unwrap();
-        let mut writer = std::io::BufWriter::new(fd);
-        let mut full_frame: *mut IMPFrameInfo = std::ptr::null_mut();
+        let now: DateTime<Utc> = Utc::now();
+        let time: DateTime<FixedOffset> =
+            now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
+        let file_name = time
+            .format("/media/mmc/tmp/yuv_list_%Y%m%d-%H%M%S-%3f")
+            .to_string();
 
+        let mut full_frame: *mut IMPFrameInfo = std::ptr::null_mut();
         IMP_FrameSource_GetFrame(0, &mut full_frame);
-        let img_buffer = std::slice::from_raw_parts(
-            (*full_frame).virAddr as *const u8,
-            (*full_frame).size as usize,
-        );
-        writer.write_all(img_buffer).unwrap();
-        println!(
-            "{}",
-            std::time::Instant::now()
-                .duration_since(last_time)
-                .as_micros()
-        );
-        println!(
-            "s {}, w {}, h {}",
-            (*full_frame).size,
-            (*full_frame).width,
-            (*full_frame).height
-        );
-        last_time = std::time::Instant::now();
-        IMP_FrameSource_ReleaseFrame(0, full_frame);
-        writer.flush().unwrap();
-        cnt += 1;
+
+        let frame_addr = full_frame as u32;
+        tx.send((frame_addr, file_name));
+
+        //}
+
+        //let start = std::time::Instant::now();
+        //let (buf_writer, r) = encoder.finish();
+        //r.unwrap();
+        //buf_writer.into_inner().unwrap().sync_all().unwrap();
+        //println!(
+        //    "encoder finish time {}",
+        //    std::time::Instant::now().duration_since(start).as_micros()
+        //);
     }
 }
 
@@ -451,8 +487,6 @@ pub unsafe fn start(
 
             if detecting_flag != 0 {
                 detecting_flag -= 1;
-                println!("{}", detecting_flag);
-
                 if detecting_flag == 0 {
                     println!("saving detection");
                     let now: DateTime<Utc> = Utc::now();

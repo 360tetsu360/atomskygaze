@@ -66,6 +66,7 @@ async fn main() {
 
     let detected_msg_instance = detected_msg.clone();
     let is_detecting_instance = is_detecting.clone();
+
     thread::spawn(|| unsafe {
         imp_init();
         log_all_value();
@@ -76,12 +77,11 @@ async fn main() {
         imp_avc_init();
         imp_framesource_start();
         init();
+
         thread::spawn(move || {
             imp_osd_start(grp_num, font_handle);
         });
-        thread::spawn(|| {
-            get_h264_stream();
-        });
+        mp4save_loops();
         thread::spawn(|| {
             jpeg_start(tx);
         });

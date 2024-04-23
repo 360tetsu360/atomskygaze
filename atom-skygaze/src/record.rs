@@ -3,11 +3,23 @@ use isvp_sys::*;
 use log::{error, info};
 use minimp4::Mp4Muxer;
 use std::fs::File;
+use std::io::BufWriter;
+use std::io::Write;
 use std::path::Path;
+use std::sync::mpsc;
+use std::thread;
 
 const REGULAR_FPS: u32 = 25;
 
-pub unsafe fn get_h264_stream() -> bool {
+pub fn mp4save_loops() {
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || unsafe { get_h264_stream(tx) });
+
+    thread::spawn(move || sync_file(rx));
+}
+
+unsafe fn get_h264_stream(tx: mpsc::Sender<File>) -> bool {
     if IMP_Encoder_StartRecvPic(3) < 0 {
         error!("IMP_Encoder_StartRecvPic failed");
         return false;
@@ -39,12 +51,9 @@ pub unsafe fn get_h264_stream() -> bool {
             .with_second(0)
             .unwrap();
 
-        let dir_day = format!(
-            "/media/mmc/records/regular/{:04}{:02}{:02}/",
-            current_time.year(),
-            current_time.month(),
-            current_time.day()
-        );
+        let dir_day = current_time
+            .format("/media/mmc/records/regular/%Y%m%d")
+            .to_string();
 
         let dir = Path::new(&dir_day);
         if !dir.is_dir() {
@@ -56,25 +65,14 @@ pub unsafe fn get_h264_stream() -> bool {
             std::fs::create_dir(&hour_dir).unwrap();
         }
 
-        let mp4path = format!(
-            "/media/mmc/records/regular/{:04}{:02}{:02}/{:02}/{:02}.mp4",
-            current_time.year(),
-            current_time.month(),
-            current_time.day(),
-            current_time.hour(),
-            current_time.minute()
-        );
+        let mp4path = current_time
+            .format("/media/mmc/records/regular/%Y%m%d/%H/%M.mp4")
+            .to_string();
 
-        let mp4title = format!(
-            "{:04}-{:02}-{:02}-{:02}-{:02}",
-            current_time.year(),
-            current_time.month(),
-            current_time.day(),
-            current_time.hour(),
-            current_time.minute()
-        );
+        let mp4title = current_time.format("%Y-%m-%d-%H-%M").to_string();
 
-        let mut mp4muxer = Mp4Muxer::new(File::create(mp4path).unwrap());
+        let file = File::create(mp4path).unwrap();
+        let mut mp4muxer = Mp4Muxer::new(file);
         mp4muxer.init_video(1920, 1080, true, &mp4title);
 
         let mut last_timestamp = -1;
@@ -125,18 +123,7 @@ pub unsafe fn get_h264_stream() -> bool {
             );
 
             for pack in stream_packs {
-                let fps = if last_timestamp == -1 {
-                    REGULAR_FPS
-                } else {
-                    let elapsed = pack.timestamp - last_timestamp;
-
-                    if elapsed == 0 {
-                        REGULAR_FPS
-                    } else {
-                        let duration = std::time::Duration::from_micros(elapsed as u64);
-                        std::time::Duration::from_secs(1).div_duration_f32(duration) as u32
-                    }
-                };
+                let fps = REGULAR_FPS;
 
                 last_timestamp = pack.timestamp;
 
@@ -169,14 +156,14 @@ pub unsafe fn get_h264_stream() -> bool {
             }
         }
 
-        mp4muxer.close();
-        info!(
-            "Saved regular {:04}{:02}{:02}{:02}{:02}",
-            current_time.year(),
-            current_time.month(),
-            current_time.day(),
-            current_time.hour(),
-            current_time.minute()
-        );
+        let file = mp4muxer.close();
+        tx.send(file).unwrap();
+    }
+}
+
+fn sync_file(rx: mpsc::Receiver<File>) {
+    for file in rx {
+        file.sync_all().unwrap();
+        println!("Saved mp4");
     }
 }

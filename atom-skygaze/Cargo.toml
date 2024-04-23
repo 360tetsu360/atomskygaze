@@ -21,3 +21,4 @@ futures = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 minimp4 = { path = "../patches/minimp4.rs/packages/minimp4" }
 chrono = "0.4.37"
+lz4 = "1.24"

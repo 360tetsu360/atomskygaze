@@ -293,8 +293,8 @@ pub unsafe fn imp_encoder_init() -> bool {
 
     if IMP_Encoder_SetDefaultParam(
         &mut encoder_attr,
-        IMPEncoderProfile_IMP_ENC_PROFILE_AVC_MAIN,
-        IMPEncoderRcMode_IMP_ENC_RC_MODE_CBR,
+        IMPEncoderProfile_IMP_ENC_PROFILE_HEVC_MAIN,
+        IMPEncoderRcMode_IMP_ENC_RC_MODE_VBR,
         SENSOR_WIDTH as u16,
         SENSOR_HEIGHT as u16,
         25,
@@ -308,27 +308,6 @@ pub unsafe fn imp_encoder_init() -> bool {
         error!("IMP_Encoder_SetDefaultParam failed");
         return false;
     }
-
-    //encoder_attr.encAttr.eProfile = IMPEncoderProfile_IMP_ENC_PROFILE_HEVC_MAIN;
-
-    encoder_attr.rcAttr.attrRcMode = IMPEncoderAttrRcMode {
-        rcMode: IMPEncoderRcMode_IMP_ENC_RC_MODE_CBR,
-        __bindgen_anon_1: IMPEncoderAttrRcMode__bindgen_ty_1 {
-            attrCbr: IMPEncoderAttrCbr {
-                uTargetBitRate: 1,
-                iInitialQP: -1,
-                iMinQP: 15,
-                iMaxQP: 45,
-                iIPDelta: -1,
-                iPBDelta: -1,
-                eRcOptions: IMPEncoderRcOptions_IMP_ENC_RC_SCN_CHG_RES
-                    | IMPEncoderRcOptions_IMP_ENC_RC_OPT_SC_PREVENTION,
-                uMaxPictureSize: 4,
-            },
-        },
-    };
-
-    encoder_attr.gopAttr.uMaxSameSenceCnt = 0;
 
     if IMP_Encoder_CreateChn(0, &encoder_attr) < 0 {
         error!("IMP_Encoder_CreateChn failed");
@@ -552,43 +531,26 @@ pub unsafe fn imp_avc_init() -> bool {
         },
     };
 
+    let ratio = 1.0 / (f32::log10((1920. * 1080.) / (640. * 360.)) + 1.0);
+    let bitrate = (BITRATE_720P_KBS as f32 * ratio) as u32;
+
     if IMP_Encoder_SetDefaultParam(
         &mut channel_attr,
         IMPEncoderProfile_IMP_ENC_PROFILE_HEVC_MAIN,
-        IMPEncoderRcMode_IMP_ENC_RC_MODE_CBR,
+        IMPEncoderRcMode_IMP_ENC_RC_MODE_FIXQP,
         SENSOR_WIDTH as u16,
         SENSOR_HEIGHT as u16,
         25,
         1,
         50,
         2,
-        -1,
-        1,
+        38,
+        bitrate,
     ) < 0
     {
         error!("IMP_Encoder_SetDefaultParam failed");
         return false;
     }
-
-    let ratio = 1.0 / (f32::log10((1920. * 1080.) / (640. * 360.)) + 1.0);
-    let bitrate = (BITRATE_720P_KBS as f32 * ratio) as u32;
-
-    channel_attr.rcAttr.attrRcMode = IMPEncoderAttrRcMode {
-        rcMode: IMPEncoderRcMode_IMP_ENC_RC_MODE_VBR,
-        __bindgen_anon_1: IMPEncoderAttrRcMode__bindgen_ty_1 {
-            attrVbr: IMPEncoderAttrVbr {
-                uTargetBitRate: bitrate,
-                uMaxBitRate: bitrate * 4 / 3,
-                iInitialQP: -1,
-                iMinQP: 34,
-                iMaxQP: 51,
-                iIPDelta: -1,
-                iPBDelta: -1,
-                eRcOptions: IMPEncoderRcOptions_IMP_ENC_RC_STATIC_SCENE,
-                uMaxPictureSize: bitrate * 4 / 3,
-            },
-        },
-    };
 
     if IMP_Encoder_CreateChn(3, &channel_attr) < 0 {
         error!("IMP_Encoder_CreateChn failed");
