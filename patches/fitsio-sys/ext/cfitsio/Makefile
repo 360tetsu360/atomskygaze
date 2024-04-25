@@ -35,7 +35,7 @@ INSTALL_DIRS	= ${DESTDIR}${prefix} ${CFITSIO_INCLUDE} ${CFITSIO_LIB} ${CFITSIO_L
 
 SHELL =		/bin/sh
 ARCHIVE =	ar rv
-RANLIB =	ranlib
+RANLIB =	mipsel-ingenic-linux-gnu-ranlib
 CC =		/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc
 CFLAGS =	-O3 -ffunction-sections -fdata-sections -fPIC  -O3 -fPIE -Dg77Fortran -fPIC
 CPPFLAGS =	

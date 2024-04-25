@@ -74,100 +74,139 @@ connection.onclose = function() {
     console.log("Close");
 };
 
-var on = false;
-document.getElementById("ircut").onclick = () => {
-    if(on) {
-        connection.send("iron");
-    }else {
-        connection.send("iroff");
-    }
-    on = !on;
-}
-
-
-document.getElementById("log").onclick = () => {
-    connection.send("log");
-}
-
-var flip = 0;
-document.getElementById("flip").onclick = () => {
-    connection.send(`flip${flip}`);
-    flip++;
-    if(flip == 5) {
-        flip = 0;
+document.getElementById("shw_msk").onchange = () => {
+    let checked = document.getElementById("shw_msk").checked; 
+    var elements = document.getElementsByClassName("grid-item");
+    for (var i = 0; i < elements.length; i++){
+        elements[i].style.display = checked ? "block" : "none";
     }
 }
 
-var gain_type = "again";
-document.getElementById("gain").onclick = () => {
-    let vgain_cmd = `gain,${gain_type},${document.getElementById("vgain").value}`;
-    console.log(vgain_cmd);
-    connection.send(vgain_cmd);
-}
-document.getElementById("gaintyp").onclick = () => {
-    if(gain_type == "again") {
-        gain_type = "dgain"
-    } else if(gain_type == "dgain") {
-        gain_type = "again"
-    }
-
-    document.getElementById("gaintyp").innerHTML = gain_type;
-}
-
-var proc_type = "brt";
-document.getElementById("proc").onclick = () => {
-    let vproc_cmd = `proc,${proc_type},${document.getElementById("vproc").value}`;
-    console.log(vproc_cmd);
-    connection.send(vproc_cmd);
-}
-document.getElementById("proctyp").onclick = () => {
-    if(proc_type == "brt") {
-        proc_type = "cont"
-    } else if(proc_type == "cont") {
-        proc_type = "shrp"
-    } else if(proc_type == "shrp") {
-        proc_type = "satu"
-    } else if(proc_type == "satu") {
-        proc_type = "brt"
-    }
-
-    document.getElementById("proctyp").innerHTML = proc_type;
-}
-
-document.getElementById("expr").onclick = () => {
-    let vexpr_cmd = `expr,${document.getElementById("vexpr").value}`;
-    console.log(vexpr_cmd);
-    connection.send(vexpr_cmd);
-}
-
-document.getElementById("whba").onclick = () => {
-    let vwb_cmd = `expr,${document.getElementById("vwbr").value},${document.getElementById("vwbb").value}`;
-    console.log(vwb_cmd);
-    connection.send(vwb_cmd);
-}
-
-
-var mask_show = false;
-document.getElementById("shw_msk").onclick = () => {
-    if(mask_show) {
-        document.getElementById("shw_msk").innerHTML = "hide mask";
-        var elements = document.getElementsByClassName("grid-item");
-
-        for (var i = 0; i < elements.length; i++){
-            elements[i].style.display = "none";
-        }
-    } else {
-        document.getElementById("shw_msk").innerHTML = "show mask";
-        var elements = document.getElementsByClassName("grid-item");
-
-        for (var i = 0; i < elements.length; i++){
-            elements[i].style.display = "block";
-        }
-    }
-
-    mask_show = !mask_show;
-}
-
-document.getElementById("app_msk").onclick = () => {
+document.getElementById("app-msk").onclick = () => {
     connection.send(grid_state.buffer);
 }
+
+document.getElementById("det").onchange= () => {
+    let checked = document.getElementById("det").checked;
+    connection.send(`det,${checked? "on":"off"}`);
+}
+
+document.getElementById("tstmp").onchange= () => {
+    let checked = document.getElementById("tstmp").checked;
+    connection.send(`tstmp,${checked? "on":"off"}`);
+}
+
+document.getElementById("night-mode").onchange= () => {
+    let checked = document.getElementById("night-mode").checked;
+    connection.send(`mode,${checked? "night":"day"}`);
+}
+
+document.getElementById("ircut").onchange= () => {
+    let checked = document.getElementById("ircut").checked;
+    connection.send(`ir,${checked? "on":"off"}`);
+}
+
+document.getElementById("hflip").onchange= () => {
+    let checked = document.getElementById("hflip").checked;
+    connection.send(`flip,h,${checked? "on":"off"}`);
+}
+
+document.getElementById("vflip").onchange= () => {
+    let checked = document.getElementById("vflip").checked;
+    connection.send(`flip,v,${checked? "on":"off"}`);
+}
+
+document.getElementById("freeze-ae").onchange= () => {
+    let checked = document.getElementById("freeze-ae").checked;
+    connection.send(`ae,freeze,${checked? "on":"off"}`);
+}
+
+document.getElementById("expr-en").onchange= () => {
+    let checked = document.getElementById("expr-en").checked;
+    document.getElementById("expr-range").disabled = !checked;
+    document.getElementById("expr").disabled = !checked;
+    connection.send(`ae,expr-en,${checked? "on":"off"}`);
+}
+
+document.getElementById("expr").onclick= () => {
+    connection.send(`ae,expr,${document.getElementById("expr-range").value}`);
+}
+
+document.getElementById("again-en").onchange= () => {
+    let checked = document.getElementById("again-en").checked;
+    document.getElementById("again-range").disabled = !checked;
+    document.getElementById("again").disabled = !checked;
+    connection.send(`ae,again-en,${checked? "on":"off"}`);
+}
+
+document.getElementById("again").onclick= () => {
+    connection.send(`ae,again,${document.getElementById("again-range").value}`);
+}
+
+document.getElementById("dgain-en").onchange= () => {
+    let checked = document.getElementById("dgain-en").checked;
+    document.getElementById("dgain-range").disabled = !checked;
+    document.getElementById("dgain").disabled = !checked;
+    connection.send(`ae,dgain-en,${checked? "on":"off"}`);
+}
+
+document.getElementById("dgain").onclick= () => {
+    connection.send(`ae,dgain,${document.getElementById("dgain-range").value}`);
+}
+
+document.getElementById("ispgain-en").onchange= () => {
+    let checked = document.getElementById("ispgain-en").checked;
+    document.getElementById("ispgain-range").disabled = !checked;
+    document.getElementById("ispgain").disabled = !checked;
+    connection.send(`ae,ispgain-en,${checked? "on":"off"}`);
+}
+
+document.getElementById("ispgain").onclick= () => {
+    connection.send(`ae,ispgain,${document.getElementById("ispgain-range").value}`);
+}
+
+document.getElementById("wdr-en").onclick= () => {
+    let checked = document.getElementById("wdr-en").checked;
+    connection.send(`wdr,${checked? "on":"off"}`);
+}
+
+document.getElementById("brt").onclick= () => {
+    connection.send(`proc,brt,${document.getElementById("brt-range").value}`);
+}
+
+document.getElementById("cnt").onclick= () => {
+    connection.send(`proc,cnt,${document.getElementById("cnt-range").value}`);
+}
+
+document.getElementById("shrp").onclick= () => {
+    connection.send(`proc,shrp,${document.getElementById("shrp-range").value}`);
+}
+
+document.getElementById("sat").onclick = () => {
+    connection.send(`proc,sat,${document.getElementById("sat-range").value}`);
+}
+
+const ranges = document.querySelectorAll('input[type="range"]');
+const paragraphs = {
+    "expr-range": document.getElementById("expr-value"),
+    "again-range": document.getElementById("again-value"),
+    "dgain-range": document.getElementById("dgain-value"),
+    "ispgain-range": document.getElementById("ispgain-value"),
+    "brt-range": document.getElementById("brt-value"),
+    "cnt-range": document.getElementById("cnt-value"),
+    "shrp-range": document.getElementById("shrp-value"),
+    "sat-range": document.getElementById("sat-value"),
+};
+
+function updateParagraph(event) {
+    const sliderId = event.target.id;
+    const newValue = event.target.value; 
+    const paragraph = paragraphs[sliderId];
+    if (paragraph) {
+        paragraph.textContent = newValue;
+    }
+}
+
+ranges.forEach(range => {
+    range.addEventListener('input', updateParagraph);
+});

@@ -4,40 +4,219 @@
         <title>ATOM skygaze</title>
         <meta charset="utf-8">
         <link rel="stylesheet" type="text/css" href="style.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
     </head>
     <body>
-        <header></header>
+        <header>
+            ATOM-SKYGAZE v0.1.0
+        </header>
         <div class="left">
-            <button id="shw_msk">show mask</button>
-            <br>
-            <button id="app_msk">apply mask</button>
+            <div class="control-panel">
+                Mask
+                <div class="one-line-sub">
+                    Show
+                    <label class="toggle" for="shw_msk">
+                        <input type="checkbox" id="shw_msk">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="one-line-sub">
+                    Apply
+                    <button id="app-msk" class="button">Apply</button>
+                </div>
+            </div>
+            <div class="control-panel">
+                <div class="one-line">
+                    Meteor Detect
+                    <label class="toggle">
+                        <input type="checkbox" id="det">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="control-panel">
+                <div class="one-line">
+                    Timestamp
+                    <label class="toggle">
+                        <input type="checkbox" id="tstmp">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
         </div> 
+        <hr class="separator">
         <div class="preview">
             <img id="prev" src="aaa.jpg">
             <div class="grid-overlay" id="gridOverlay"></div>
         </div> 
         <div class="right">
-            <button id="ircut"></button>
-            <br>
-            <button id="flip"></button>
-            <br>
-            <button id="gain"></button>
-            <input type="range" min="0" max="4294967295" id="vgain">
-            <button id="gaintyp">again</button>
-            <br>
-            <button id="proc"></button>
-            <input type="range" min="0" max="255" id="vproc">
-            <button id="proctyp">brt</button>
-            <br>
-            <button id="expr"></button>
-            <input type="range" min="0" max="65535" id="vexpr">
-            <br>
-            <br>
-            <button id="whba"></button>
-            <input type="range" min="0" max="65535" id="vwbr">
-            <input type="range" min="0" max="65535" id="vwbb">
-            <br>
-            <button id="log"></button>
+            <div class="control-panel">
+                <div class="one-line">
+                    Night Mode
+                    <label class="toggle">
+                        <input type="checkbox" id="night-mode">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="one-line">
+                    IRCUT
+                    <label class="toggle">
+                        <input type="checkbox" id="ircut">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                Flip
+                <div class="one-line-sub">
+                    Horizontal
+                    <label class="toggle">
+                        <input type="checkbox" id="hflip">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="one-line-sub">
+                    Vertical
+                    <label class="toggle">
+                        <input type="checkbox" id="vflip">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="one-line">
+                    Freeze Auto Exposure
+                    <label class="toggle">
+                        <input type="checkbox" id="freeze-ae">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="one-line">
+                    Manual Exposure
+                    <label class="toggle">
+                        <input type="checkbox" id="expr-en">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="two-line-sub">
+                    Exposure
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="65535" id="expr-range" class="slider-bar" />
+                        <p class="slide-value" id="expr-value">100</p>
+                        <button id="expr" class="button">Set</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="one-line">
+                    Manual Analog Gain
+                    <label class="toggle">
+                        <input type="checkbox" id="again-en">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="two-line-sub">
+                    Analog Gain
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="65535" id="again-range" class="slider-bar" />
+                        <p class="slide-value" id="again-value">100</p>
+                        <button id="again" class="button">Set</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="one-line">
+                    Manual Digital Gain
+                    <label class="toggle">
+                        <input type="checkbox" id="dgain-en">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="two-line-sub">
+                    Digital Gain
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="65535" id="dgain-range" class="slider-bar" />
+                        <p class="slide-value" id="dgain-value">100</p>
+                        <button id="dgain" class="button">Set</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="one-line">
+                    Manual ISP Gain
+                    <label class="toggle">
+                        <input type="checkbox" id="ispgain-en">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="two-line-sub">
+                    ISP Gain
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="65535" id="ispgain-range" class="slider-bar" />
+                        <p class="slide-value" id="ispgain-value">100</p>
+                        <button id="ispgain" class="button">Set</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="one-line">
+                    Wide Dynamic Range
+                    <label class="toggle">
+                        <input type="checkbox" id="wdr-en">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="control-panel">
+                Image Processing
+                <div class="two-line-sub">
+                    Brigthness
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="255" id="brt-range" class="slider-bar" />
+                        <p class="slide-value" id="brt-value">128</p>
+                        <button id="brt" class="button">Set</button>
+                    </div>
+                </div>
+                <div class="two-line-sub">
+                    Contrast
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="255" id="cnt-range" class="slider-bar" />
+                        <p class="slide-value" id="cnt-value">128</p>
+                        <button id="cnt" class="button">Set</button>
+                    </div>
+                </div>
+                <div class="two-line-sub">
+                    Sharpness
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="255" id="shrp-range" class="slider-bar" />
+                        <p class="slide-value" id="shrp-value">128</p>
+                        <button id="shrp" class="button">Set</button>
+                    </div>
+                </div>
+                <div class="two-line-sub">
+                    Saturation
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="255" id="sat-range" class="slider-bar" />
+                        <p class="slide-value" id="sat-value">128</p>
+                        <button id="sat" class="button">Set</button>
+                    </div>
+                </div>
+            </div>
         </div>
         <script src="script.js"></script> 
     </body>
