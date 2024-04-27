@@ -1,3 +1,4 @@
+use crate::AppState;
 use isvp_sys::*;
 use log::error;
 use std::os::raw::c_void;
@@ -82,7 +83,7 @@ static mut CHANNEL_ATTRIBUTES: [IMPFSChnAttr; 2] = [
     },
 ];
 
-pub unsafe fn imp_init() -> bool {
+pub unsafe fn imp_init(app_state: AppState) -> bool {
     IMP_OSD_SetPoolSize(512 * 1024);
 
     SENSOR_INFO.name[..SENSOR_NAME.len()]
@@ -115,22 +116,22 @@ pub unsafe fn imp_init() -> bool {
         return false;
     }
 
-    if IMP_ISP_Tuning_SetContrast(128) < 0 {
+    if IMP_ISP_Tuning_SetContrast(app_state.contrast) < 0 {
         error!("IMP_ISP_Tuning_SetContrast failed");
         return false;
     }
 
-    if IMP_ISP_Tuning_SetSharpness(128) < 0 {
+    if IMP_ISP_Tuning_SetSharpness(app_state.sharpness) < 0 {
         error!("IMP_ISP_Tuning_SetSharpness failed");
         return false;
     }
 
-    if IMP_ISP_Tuning_SetSaturation(128) < 0 {
+    if IMP_ISP_Tuning_SetSaturation(app_state.saturation) < 0 {
         error!("IMP_ISP_SetSaturation failed");
         return false;
     }
 
-    if IMP_ISP_Tuning_SetBrightness(128) < 0 {
+    if IMP_ISP_Tuning_SetBrightness(app_state.brightness) < 0 {
         error!("IMP_ISP_SetBrightness failed");
         return false;
     }
@@ -140,9 +141,27 @@ pub unsafe fn imp_init() -> bool {
         return false;
     }
 
-    if IMP_ISP_Tuning_SetISPRunningMode(IMPISPRunningMode_IMPISP_RUNNING_MODE_DAY) < 0 {
+    let mode = if app_state.night_mode {
+        IMPISPRunningMode_IMPISP_RUNNING_MODE_NIGHT
+    } else {
+        IMPISPRunningMode_IMPISP_RUNNING_MODE_DAY
+    };
+
+    if IMP_ISP_Tuning_SetISPRunningMode(mode) < 0 {
         error!("IMP_ISP_Tuning_SetTSPRunningMode failed");
         return false;
+    }
+
+    if app_state.flip.0 {
+        IMP_ISP_Tuning_SetISPHflip(IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE);
+    } else {
+        IMP_ISP_Tuning_SetISPHflip(IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE);
+    }
+
+    if app_state.flip.1 {
+        IMP_ISP_Tuning_SetISPVflip(IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE);
+    } else {
+        IMP_ISP_Tuning_SetISPVflip(IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE);
     }
 
     true

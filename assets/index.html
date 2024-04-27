@@ -45,11 +45,20 @@
                     </label>
                 </div>
             </div>
+            <div class="control-panel">
+                <div class="one-line">
+                    Save Settings
+                    <button id="save-conf" class="button">Save</button>
+                </div>
+            </div>
         </div> 
         <hr class="separator">
         <div class="preview">
             <img id="prev" src="aaa.jpg">
             <div class="grid-overlay" id="gridOverlay"></div>
+            <div class="log-title">Logs</div>
+            <div id="log-box">
+            </div>
         </div> 
         <div class="right">
             <div class="control-panel">
@@ -73,6 +82,26 @@
             </div>
 
             <div class="control-panel">
+                <div class="one-line">
+                    LED
+                    <label class="toggle">
+                        <input type="checkbox" id="led">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="one-line">
+                    IR-LED
+                    <label class="toggle">
+                        <input type="checkbox" id="irled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
                 Flip
                 <div class="one-line-sub">
                     Horizontal
@@ -85,98 +114,6 @@
                     Vertical
                     <label class="toggle">
                         <input type="checkbox" id="vflip">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="control-panel">
-                <div class="one-line">
-                    Freeze Auto Exposure
-                    <label class="toggle">
-                        <input type="checkbox" id="freeze-ae">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="control-panel">
-                <div class="one-line">
-                    Manual Exposure
-                    <label class="toggle">
-                        <input type="checkbox" id="expr-en">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="two-line-sub">
-                    Exposure
-                    <div class="range-button-block">
-                        <input type="range" min="0" max="65535" id="expr-range" class="slider-bar" />
-                        <p class="slide-value" id="expr-value">100</p>
-                        <button id="expr" class="button">Set</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-panel">
-                <div class="one-line">
-                    Manual Analog Gain
-                    <label class="toggle">
-                        <input type="checkbox" id="again-en">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="two-line-sub">
-                    Analog Gain
-                    <div class="range-button-block">
-                        <input type="range" min="0" max="65535" id="again-range" class="slider-bar" />
-                        <p class="slide-value" id="again-value">100</p>
-                        <button id="again" class="button">Set</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-panel">
-                <div class="one-line">
-                    Manual Digital Gain
-                    <label class="toggle">
-                        <input type="checkbox" id="dgain-en">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="two-line-sub">
-                    Digital Gain
-                    <div class="range-button-block">
-                        <input type="range" min="0" max="65535" id="dgain-range" class="slider-bar" />
-                        <p class="slide-value" id="dgain-value">100</p>
-                        <button id="dgain" class="button">Set</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-panel">
-                <div class="one-line">
-                    Manual ISP Gain
-                    <label class="toggle">
-                        <input type="checkbox" id="ispgain-en">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="two-line-sub">
-                    ISP Gain
-                    <div class="range-button-block">
-                        <input type="range" min="0" max="65535" id="ispgain-range" class="slider-bar" />
-                        <p class="slide-value" id="ispgain-value">100</p>
-                        <button id="ispgain" class="button">Set</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-panel">
-                <div class="one-line">
-                    Wide Dynamic Range
-                    <label class="toggle">
-                        <input type="checkbox" id="wdr-en">
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -218,6 +155,9 @@
                 </div>
             </div>
         </div>
+        <footer>
+
+        </footer>
         <script src="script.js"></script> 
     </body>
 </html>

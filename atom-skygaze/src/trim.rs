@@ -1,5 +1,4 @@
 use chrono::*;
-use futures::executor;
 use log::error;
 use std::fs::remove_file;
 use std::fs::File;
@@ -32,7 +31,6 @@ pub fn trim_loop(msg_rx: DetectionReceiver) {
                 } else {
                     error!("ffmpeg failed {}", e);
                 }
-            } else {
             }
         }
         drop(msg_buff);
@@ -48,7 +46,6 @@ pub fn trim_loop(msg_rx: DetectionReceiver) {
                 } else {
                     error!("ffmpeg failed {}", e);
                 }
-            } else {
             }
         }
 

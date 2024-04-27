@@ -1,47 +1,59 @@
+use crate::config::save_to_file;
 use crate::gpio::*;
+use crate::AppState;
 use axum::extract::{
     ws::{Message, WebSocket},
     State, WebSocketUpgrade,
 };
 use axum::response::IntoResponse;
-use chrono::*;
 use futures::SinkExt;
 use futures::StreamExt;
 use isvp_sys::*;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::Mutex;
-use tokio::sync::{mpsc, watch};
+use tokio::sync::watch;
 
-type AppState = State<(
+type AppStateWs = State<(
     watch::Receiver<Vec<u8>>,
-    mpsc::Sender<Vec<u8>>,
-    Arc<Mutex<bool>>,
-    Arc<Mutex<Vec<(DateTime<FixedOffset>, DateTime<FixedOffset>)>>>,
+    Arc<Mutex<AppState>>,
+    watch::Receiver<LogType>,
 )>;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum LogType {
+    Detection(String),
+    None,
+}
 
 pub async fn handler(
     ws: WebSocketUpgrade,
-    State((rx, mask_sender, detecting, detected)): AppState,
+    State((rx, app_state, log_rx)): AppStateWs,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket: WebSocket| {
-        handle_socket(socket, rx, mask_sender, detecting, detected)
-    })
+    ws.on_upgrade(move |socket: WebSocket| handle_socket(socket, rx, app_state, log_rx))
 }
 
 pub async fn handle_socket(
     socket: WebSocket,
     mut rx: watch::Receiver<Vec<u8>>,
-    mask_sender: mpsc::Sender<Vec<u8>>,
-    detecting: Arc<Mutex<bool>>,
-    detected: Arc<Mutex<Vec<(DateTime<FixedOffset>, DateTime<FixedOffset>)>>>,
+    app_state: Arc<Mutex<AppState>>,
+    mut log_rx: watch::Receiver<LogType>,
 ) {
     let (mut sender, mut receiver) = socket.split();
+    let app_state_json = serde_json::to_string(&(*app_state.lock().unwrap()).clone()).unwrap();
+    let app_state_message = Message::Text(format!(
+        "{{\"type\":\"appstate\",\"payload\":{}}}",
+        app_state_json
+    ));
+
+    if sender.send(app_state_message).await.is_err() {
+        return;
+    }
+
     tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
-            dbg!();
             match msg {
                 Message::Text(texta) => {
-                    dbg!(&texta);
                     let text: Vec<&str> = texta.split(',').collect();
                     match text[0] {
                         "mode" => {
@@ -52,12 +64,14 @@ pub async fn handle_socket(
                                             IMPISPRunningMode_IMPISP_RUNNING_MODE_DAY,
                                         );
                                     }
+                                    app_state.lock().unwrap().night_mode = false;
                                 } else if text[1] == "night" {
                                     unsafe {
                                         IMP_ISP_Tuning_SetISPRunningMode(
                                             IMPISPRunningMode_IMPISP_RUNNING_MODE_NIGHT,
                                         );
                                     }
+                                    app_state.lock().unwrap().night_mode = true;
                                 }
                             }
                         }
@@ -65,8 +79,30 @@ pub async fn handle_socket(
                             if text.len() == 2 {
                                 if text[1] == "on" {
                                     ircut_on().unwrap();
+                                    app_state.lock().unwrap().ircut_on = true;
                                 } else if text[1] == "off" {
                                     ircut_off().unwrap();
+                                    app_state.lock().unwrap().ircut_on = false;
+                                }
+                            }
+                        }
+                        "led" => {
+                            if text.len() == 2 {
+                                if text[1] == "on" {
+                                    app_state.lock().unwrap().led_on = true;
+                                } else if text[1] == "off" {
+                                    app_state.lock().unwrap().led_on = false;
+                                }
+                            }
+                        }
+                        "irled" => {
+                            if text.len() == 2 {
+                                if text[1] == "on" {
+                                    irled_on().unwrap();
+                                    app_state.lock().unwrap().irled_on = true;
+                                } else if text[1] == "off" {
+                                    irled_off().unwrap();
+                                    app_state.lock().unwrap().irled_on = false;
                                 }
                             }
                         }
@@ -79,12 +115,14 @@ pub async fn handle_socket(
                                                 IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE,
                                             );
                                         }
+                                        app_state.lock().unwrap().flip.0 = true;
                                     } else if text[2] == "off" {
                                         unsafe {
                                             IMP_ISP_Tuning_SetISPHflip(
                                                 IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE,
                                             );
                                         }
+                                        app_state.lock().unwrap().flip.0 = false;
                                     }
                                 } else if text[1] == "v" {
                                     if text[2] == "on" {
@@ -93,122 +131,14 @@ pub async fn handle_socket(
                                                 IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE,
                                             );
                                         }
+                                        app_state.lock().unwrap().flip.1 = true;
                                     } else if text[2] == "off" {
                                         unsafe {
                                             IMP_ISP_Tuning_SetISPVflip(
                                                 IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE,
                                             );
                                         }
-                                    }
-                                }
-                            }
-                        }
-                        "ae" => {
-                            if text.len() == 3 {
-                                let mut aeattr = IMPISPAEAttr {
-                                    AeFreezenEn: 0,
-                                    AeItManualEn: 0,
-                                    AeIt: 0,
-                                    AeAGainManualEn: 0,
-                                    AeAGain: 0,
-                                    AeDGainManualEn: 0,
-                                    AeDGain: 0,
-                                    AeIspDGainManualEn: 0,
-                                    AeIspDGain: 0,
-                                    AeWdrShortFreezenEn: 0,
-                                    AeWdrShortItManualEn: 0,
-                                    AeWdrShortIt: 0,
-                                    AeWdrShortAGainManualEn: 0,
-                                    AeWdrShortAGain: 0,
-                                    AeWdrShortDGainManualEn: 0,
-                                    AeWdrShortDGain: 0,
-                                    AeWdrShortIspDGainManualEn: 0,
-                                    AeWdrShortIspDGain: 0,
-                                };
-
-                                unsafe {
-                                    IMP_ISP_Tuning_GetAeAttr(&mut aeattr);
-                                }
-
-                                match text[1] {
-                                    "freeze" => {
-                                        if text[2] == "on" {
-                                            aeattr.AeFreezenEn =
-                                                IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE;
-                                        } else if text[2] == "off" {
-                                            aeattr.AeFreezenEn =
-                                                IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE;
-                                        }
-                                    }
-                                    "expr-en" => {
-                                        if text[2] == "on" {
-                                            aeattr.AeItManualEn =
-                                                IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE;
-                                        } else if text[2] == "off" {
-                                            aeattr.AeItManualEn =
-                                                IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE;
-                                        }
-                                    }
-                                    "again-en" => {
-                                        if text[2] == "on" {
-                                            aeattr.AeAGainManualEn =
-                                                IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE;
-                                        } else if text[2] == "off" {
-                                            aeattr.AeAGainManualEn =
-                                                IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE;
-                                        }
-                                    }
-                                    "dgain-en" => {
-                                        if text[2] == "on" {
-                                            aeattr.AeDGainManualEn =
-                                                IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE;
-                                        } else if text[2] == "off" {
-                                            aeattr.AeDGainManualEn =
-                                                IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE;
-                                        }
-                                    }
-                                    "ispgain-en" => {
-                                        if text[2] == "on" {
-                                            aeattr.AeIspDGainManualEn =
-                                                IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE;
-                                        } else if text[2] == "off" {
-                                            aeattr.AeIspDGain =
-                                                IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE;
-                                        }
-                                    }
-                                    "expr" => {
-                                        aeattr.AeIt = text[2].parse().unwrap();
-                                    }
-                                    "again" => {
-                                        aeattr.AeAGain = text[2].parse().unwrap();
-                                    }
-                                    "dgain" => {
-                                        aeattr.AeDGain = text[2].parse().unwrap();
-                                    }
-                                    "ispgain" => {
-                                        aeattr.AeIspDGain = text[2].parse().unwrap();
-                                    }
-                                    _ => {}
-                                }
-
-                                unsafe {
-                                    IMP_ISP_Tuning_SetAeAttr(&mut aeattr);
-                                }
-                            }
-                        }
-                        "wdr" => {
-                            if text.len() == 2 {
-                                if text[1] == "on" {
-                                    unsafe {
-                                        IMP_ISP_WDR_ENABLE(
-                                            IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE,
-                                        );
-                                    }
-                                } else if text[1] == "off" {
-                                    unsafe {
-                                        IMP_ISP_WDR_ENABLE(
-                                            IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE,
-                                        );
+                                        app_state.lock().unwrap().flip.1 = false;
                                     }
                                 }
                             }
@@ -220,15 +150,19 @@ pub async fn handle_socket(
                                     match text[1] {
                                         "sat" => {
                                             IMP_ISP_Tuning_SetSaturation(v);
+                                            app_state.lock().unwrap().saturation = v;
                                         }
                                         "brt" => {
                                             IMP_ISP_Tuning_SetBrightness(v);
+                                            app_state.lock().unwrap().brightness = v;
                                         }
                                         "cnt" => {
                                             IMP_ISP_Tuning_SetContrast(v);
+                                            app_state.lock().unwrap().contrast = v;
                                         }
                                         "shrp" => {
                                             IMP_ISP_Tuning_SetSharpness(v);
+                                            app_state.lock().unwrap().sharpness = v;
                                         }
                                         _ => {}
                                     }
@@ -238,17 +172,30 @@ pub async fn handle_socket(
                         "det" => {
                             if text.len() == 2 {
                                 if text[1] == "on" {
-                                    *detecting.lock().unwrap() = true;
+                                    (*app_state.lock().unwrap()).detect = true;
                                 } else if text[1] == "off" {
-                                    *detecting.lock().unwrap() = false;
+                                    (*app_state.lock().unwrap()).detect = false;
                                 }
                             }
+                        }
+                        "tstmp" => {
+                            if text.len() == 2 {
+                                if text[1] == "on" {
+                                    app_state.lock().unwrap().timestamp = true;
+                                } else if text[1] == "off" {
+                                    app_state.lock().unwrap().timestamp = false;
+                                }
+                            }
+                        }
+                        "save" => {
+                            let app_state_clone = (*app_state.lock().unwrap()).clone();
+                            tokio::spawn(save_to_file(app_state_clone));
                         }
                         _ => {}
                     }
                 }
                 Message::Binary(buffer) => {
-                    mask_sender.send(buffer).await.unwrap();
+                    app_state.lock().unwrap().mask = buffer;
                 }
                 Message::Close(_) => break,
                 _ => (),
@@ -257,9 +204,32 @@ pub async fn handle_socket(
     });
 
     tokio::spawn(async move {
-        while (rx.changed().await).is_ok() {
-            let img = rx.borrow_and_update().clone();
-            if sender.send(Message::Binary(img)).await.is_err() {
+        loop {
+            let message = tokio::select! {
+                val = log_rx.changed() => {
+                    if val.is_ok() {
+                        let msg = match log_rx.borrow_and_update().clone() {
+                            LogType::Detection(time) => {
+                                format!("{{\"type\":\"detected\",\"payload\":{{\"timestamp\":\"{}\"}}}}", time)
+                            },
+                            _ => "".to_string(),
+                        };
+                        Message::Text(msg)
+                    } else {
+                        break;
+                    }
+                }
+                val = rx.changed() => {
+                    if val.is_ok() {
+                        let img = rx.borrow_and_update().clone();
+                        Message::Binary(img)
+                    } else {
+                        break;
+                    }
+                }
+            };
+
+            if sender.send(message).await.is_err() {
                 break;
             }
         }

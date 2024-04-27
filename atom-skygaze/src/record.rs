@@ -1,10 +1,8 @@
 use chrono::{Datelike, Duration, Local, Timelike};
 use isvp_sys::*;
-use log::{error, info};
+use log::error;
 use minimp4::Mp4Muxer;
 use std::fs::File;
-use std::io::BufWriter;
-use std::io::Write;
 use std::path::Path;
 use std::sync::mpsc;
 use std::thread;
@@ -75,8 +73,6 @@ unsafe fn get_h264_stream(tx: mpsc::Sender<File>) -> bool {
         let mut mp4muxer = Mp4Muxer::new(file);
         mp4muxer.init_video(1920, 1080, true, &mp4title);
 
-        let mut last_timestamp = -1;
-
         loop {
             let current_time = Local::now() + Duration::hours(9);
             if current_time >= target_time {
@@ -124,8 +120,6 @@ unsafe fn get_h264_stream(tx: mpsc::Sender<File>) -> bool {
 
             for pack in stream_packs {
                 let fps = REGULAR_FPS;
-
-                last_timestamp = pack.timestamp;
 
                 if pack.length > 0 {
                     let rem_size = stream.streamSize - pack.offset;

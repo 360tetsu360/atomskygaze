@@ -9,9 +9,9 @@ use opencv::core::*;
 //use opencv::imgcodecs::imencode_def;
 //use opencv::imgproc;
 //use opencv::imgproc::*;
-use flate2::write::DeflateEncoder;
-use flate2::Compression;
-use lz4::EncoderBuilder;
+use crate::AppState;
+use crate::LogType;
+//use lz4::EncoderBuilder;
 use opencv::prelude::FastLineDetectorTrait;
 use opencv::ximgproc::create_fast_line_detector;
 use std::collections::VecDeque;
@@ -24,6 +24,7 @@ use std::sync::Mutex;
 use tokio::fs::File;
 use tokio::io::BufWriter;
 use tokio::sync::{mpsc, watch};
+
 type DetectionSender = Arc<Mutex<Vec<(DateTime<FixedOffset>, DateTime<FixedOffset>)>>>;
 
 const RESIZED_X: usize = 32;
@@ -299,7 +300,7 @@ fn dfs(
     }
 }
 
-fn get_move_area(diff: &Mat, mask: &[u8]) -> Vec<Blob> {
+fn get_move_area(diff: &Mat, mask: &[u8], std_weight: f64, threshold: f64) -> Vec<Blob> {
     let mut resized = vec![];
     for y in 0..18 {
         let mut new_row = vec![];
@@ -313,10 +314,9 @@ fn get_move_area(diff: &Mat, mask: &[u8]) -> Vec<Blob> {
                 (mean[0], stddev[0])
             };
 
-            //println!("stddev {}, mean {}", stddev, mean);
-            let thresh_val = mean + stddev * 2.;
+            let thresh_val = mean + stddev * std_weight;
 
-            let bin = if thresh_val > 30. && mask[(y * 32 + x) as usize] != 1 {
+            let bin = if thresh_val > threshold && mask[(y * 32 + x) as usize] != 1 {
                 1u8
             } else {
                 0u8
@@ -347,9 +347,8 @@ pub async fn save_stream_s(mut rx: mpsc::Receiver<(u32, String)>) {
             let mut buf_writer = BufWriter::new(file);
             unsafe {
                 let img_buffer = std::slice::from_raw_parts(
-                    (*std::mem::transmute::<u32, *mut IMPFrameInfo>(frame_addr)).virAddr
-                        as *const u8,
-                    (*std::mem::transmute::<u32, *mut IMPFrameInfo>(frame_addr)).size as usize,
+                    (*(frame_addr as *mut isvp_sys::IMPFrameInfo)).virAddr as *const u8,
+                    (*(frame_addr as *mut isvp_sys::IMPFrameInfo)).size as usize,
                 );
 
                 let start = std::time::Instant::now();
@@ -364,10 +363,7 @@ pub async fn save_stream_s(mut rx: mpsc::Receiver<(u32, String)>) {
                 );
 
                 let st = std::time::Instant::now();
-                IMP_FrameSource_ReleaseFrame(
-                    0,
-                    std::mem::transmute::<u32, *mut IMPFrameInfo>(frame_addr),
-                );
+                IMP_FrameSource_ReleaseFrame(0, frame_addr as *mut isvp_sys::IMPFrameInfo);
                 println!(
                     "release {}",
                     std::time::Instant::now().duration_since(st).as_micros()
@@ -377,8 +373,7 @@ pub async fn save_stream_s(mut rx: mpsc::Receiver<(u32, String)>) {
     }
 }
 
-pub unsafe fn save_stream(tx: mpsc::Sender<(u32, String)>) {
-    let mut last_time = std::time::Instant::now();
+/*pub unsafe fn save_stream(tx: mpsc::Sender<(u32, String)>) {
     loop {
         let now: DateTime<Utc> = Utc::now();
         let time: DateTime<FixedOffset> =
@@ -392,30 +387,17 @@ pub unsafe fn save_stream(tx: mpsc::Sender<(u32, String)>) {
 
         let frame_addr = full_frame as u32;
         tx.send((frame_addr, file_name));
-
-        //}
-
-        //let start = std::time::Instant::now();
-        //let (buf_writer, r) = encoder.finish();
-        //r.unwrap();
-        //buf_writer.into_inner().unwrap().sync_all().unwrap();
-        //println!(
-        //    "encoder finish time {}",
-        //    std::time::Instant::now().duration_since(start).as_micros()
-        //);
     }
-}
+}*/
 
 pub unsafe fn start(
-    mut mrx: mpsc::Receiver<Vec<u8>>,
-    detecting: Arc<Mutex<bool>>, /*, tx: watch::Sender<Vec<u8>>*/
+    app_state: Arc<Mutex<AppState>>,
     sender: DetectionSender,
+    log_tx: watch::Sender<LogType>,
 ) {
-    let mut last_frame_time = 0;
     let mut last_frame: *mut IMPFrameInfo = std::ptr::null_mut();
     let mut last_gray = Mat::default();
     let mut diff_list = VecDeque::<Mat>::with_capacity(10);
-    let mut mask = vec![0u8; 32 * 18];
     let mut detection_start: DateTime<FixedOffset> =
         Utc::now().with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
 
@@ -430,12 +412,8 @@ pub unsafe fn start(
     let _index = 0u128;
     loop {
         let mut new_frame: *mut IMPFrameInfo = std::ptr::null_mut();
-        if let Ok(msk) = mrx.try_recv() {
-            mask = msk;
-        }
 
         IMP_FrameSource_GetFrame(1, &mut new_frame);
-        last_frame_time = (*new_frame).timeStamp;
 
         let (img_width, img_height) = ((*new_frame).width, (*new_frame).height);
         let new_gray = Mat::new_rows_cols_with_data_def(
@@ -446,7 +424,8 @@ pub unsafe fn start(
         )
         .unwrap();
 
-        if *detecting.lock().unwrap() && !last_frame.is_null() {
+        let mut app_state_tmp = app_state.lock().unwrap();
+        if app_state_tmp.detect && !last_frame.is_null() {
             let mut diff = Mat::default();
 
             absdiff(&new_gray, &last_gray, &mut diff).unwrap();
@@ -458,17 +437,30 @@ pub unsafe fn start(
 
             if diff_list.len() == 10 {
                 let integrated_diff = composite(&mut diff_list);
-                let boxes = get_move_area(&integrated_diff, &mask);
+                let boxes = get_move_area(
+                    &integrated_diff,
+                    &app_state_tmp.mask,
+                    app_state_tmp.detection_config.std_weight,
+                    app_state_tmp.detection_config.threshold,
+                );
                 //println!("{}", boxes.len());
                 for rect in boxes.iter() {
-                    if rect.pix_cnt > 20 {
+                    if rect.pix_cnt > app_state_tmp.detection_config.max_roi_size {
                         println!("Too Big Roi!");
                         continue;
                     }
 
                     let cropped = integrated_diff.roi(rect.to_rect_with_scalar(20)).unwrap();
                     let mut lines: Vector<Vec4i> = Vector::new();
-                    let mut fld = create_fast_line_detector(10, 1.732, 33., 66., 3, true).unwrap();
+                    let mut fld = create_fast_line_detector(
+                        app_state_tmp.detection_config.length_threshold as i32,
+                        app_state_tmp.detection_config.distance_threshold,
+                        33.,
+                        66.,
+                        3,
+                        true,
+                    )
+                    .unwrap();
                     fld.detect(&cropped, &mut lines).unwrap();
 
                     if !lines.is_empty() {
@@ -493,9 +485,23 @@ pub unsafe fn start(
                     let time: DateTime<FixedOffset> =
                         now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
                     sender.lock().unwrap().push((detection_start, time));
+
+                    let fractional_second =
+                        (detection_start.timestamp_subsec_millis() as f64) / 100.0;
+                    let timestamp = format!(
+                        "{}.{}",
+                        detection_start.format("%Y-%m-%d %H:%M:%S"),
+                        fractional_second as i32
+                    );
+                    let log = LogType::Detection(timestamp);
+
+                    let log_clone = log.clone();
+                    log_tx.send(log_clone).unwrap();
+                    app_state_tmp.logs.push(log)
                 }
             }
         }
+        drop(app_state_tmp);
 
         IMP_FrameSource_ReleaseFrame(1, last_frame);
         last_frame = new_frame;

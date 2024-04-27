@@ -3,9 +3,9 @@ ATOM Cam2で流星観測をするためのハックです。<br>
 [atomcam_tools](https://github.com/mnakada/atomcam_tools)、[meteor_detect](https://github.com/kin-hasegawa/meteor-detect)をもとにしたプロジェクトです。
 
 # WebUIサンプル
-|マスクあり|マスクなし|
+|デフォルト|マスク編集画面|
 |---|---|
-|<img src="./images/sample.png" width=400px>|<img src="./images/sample-mask.png" width=400px>| 
+|<img src="./images/sample.png" width=600px>|<img src="./images/sample-mask.png" width=600px>| 
 
 
 

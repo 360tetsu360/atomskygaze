@@ -11,6 +11,7 @@ for (let row = 0; row < rows; row++) {
     for (let col = 0; col < columns; col++) {
         const gridItem = document.createElement("div");
         gridItem.classList.add("grid-item");
+        gridItem.id = `grid-${row}-${col}`;
         gridItem.addEventListener("mousedown", function(event) {
 	if(event.which === 1) {
         this.style.backgroundColor = "rgba(255, 0, 0, 0.7)";
@@ -62,12 +63,81 @@ connection.onerror = function(error) {
     console.log(error);
 };
 
+var prev = document.getElementById("prev");
 connection.onmessage = function(event) {
-    const binaryData = event.data;
+    if (typeof event.data === 'string') {
+        if (event.data === "") {
+            return;
+        }
 
-    const blob = new Blob([binaryData], { type: 'image/jpeg' });
+        const packet = JSON.parse(event.data);
 
-    document.getElementById("prev").src = URL.createObjectURL(blob);
+        if (packet.type === "detected") {
+            const timestamp = packet.payload.timestamp;
+            var log_box = document.getElementById("log-box");
+
+            var new_item = document.createElement("div");
+            new_item.className = "list-item";
+            new_item.textContent = `[${timestamp}] Meteor Detected`;
+
+            if (log_box.firstChild) {
+                log_box.insertBefore(new_item, log_box.firstChild);
+            } else {
+                log_box.appendChild(new_item);
+            }
+        } else if (packet.type === "appstate") {
+            const app_state = packet.payload;
+
+            grid_state = Uint8Array.from(app_state.mask);
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < columns; col++) {
+                    if (grid_state[row * columns + col] === 1) {
+                        let grid = document.getElementById(`grid-${row}-${col}`);
+                        grid.style.backgroundColor = "rgba(255, 0, 0, 0.7)";
+                    }
+                }
+            }
+            document.getElementById("det").checked = app_state.detect;
+            document.getElementById("tstmp").checked = app_state.timestamp;
+            document.getElementById("night-mode").checked = app_state.night_mode;
+            document.getElementById("ircut").checked = app_state.ircut_on;
+            document.getElementById("led").checked = app_state.led_on;
+            document.getElementById("irled").checked = app_state.irled_on;
+            document.getElementById("hflip").checked = app_state.flip[0];
+            document.getElementById("vflip").checked = app_state.flip[1];
+            document.getElementById("brt-range").value = app_state.brightness;
+            document.getElementById("brt-value").textContent = `${app_state.brightness}`;
+            document.getElementById("cnt-range").value = app_state.contrast;
+            document.getElementById("cnt-value").textContent = `${app_state.contrast}`;
+            document.getElementById("shrp-range").value = app_state.sharpness;
+            document.getElementById("shrp-value").textContent = `${app_state.sharpness}`;
+            document.getElementById("sat-range").value = app_state.saturation;
+            document.getElementById("sat-value").textContent = `${app_state.saturation}`;
+
+            for (const log_item of app_state.logs) {
+                const timestamp = log_item.Detection;
+                var log_box = document.getElementById("log-box");
+
+                var new_item = document.createElement("div");
+                new_item.className = "list-item";
+                new_item.textContent = `[${timestamp}] Meteor Detected`;
+    
+                if (log_box.firstChild) {
+                    log_box.insertBefore(new_item, log_box.firstChild);
+                } else {
+                    log_box.appendChild(new_item);
+                }
+            }
+
+        }
+      } else if (event.data instanceof Blob) {
+        const binaryData = event.data;
+        const blob = new Blob([binaryData], { type: 'image/jpeg' });
+        prev.src = URL.createObjectURL(blob);
+      } else {
+        console.log('Unknown message type');
+      }
+
 };
 
 connection.onclose = function() {
@@ -96,6 +166,10 @@ document.getElementById("tstmp").onchange= () => {
     connection.send(`tstmp,${checked? "on":"off"}`);
 }
 
+document.getElementById("save-conf").onclick = () => {
+    connection.send("save");
+}
+
 document.getElementById("night-mode").onchange= () => {
     let checked = document.getElementById("night-mode").checked;
     connection.send(`mode,${checked? "night":"day"}`);
@@ -106,6 +180,16 @@ document.getElementById("ircut").onchange= () => {
     connection.send(`ir,${checked? "on":"off"}`);
 }
 
+document.getElementById("led").onchange= () => {
+    let checked = document.getElementById("led").checked;
+    connection.send(`led,${checked? "on":"off"}`);
+}
+
+document.getElementById("irled").onchange= () => {
+    let checked = document.getElementById("irled").checked;
+    connection.send(`irled,${checked? "on":"off"}`);
+}
+
 document.getElementById("hflip").onchange= () => {
     let checked = document.getElementById("hflip").checked;
     connection.send(`flip,h,${checked? "on":"off"}`);
@@ -114,60 +198,6 @@ document.getElementById("hflip").onchange= () => {
 document.getElementById("vflip").onchange= () => {
     let checked = document.getElementById("vflip").checked;
     connection.send(`flip,v,${checked? "on":"off"}`);
-}
-
-document.getElementById("freeze-ae").onchange= () => {
-    let checked = document.getElementById("freeze-ae").checked;
-    connection.send(`ae,freeze,${checked? "on":"off"}`);
-}
-
-document.getElementById("expr-en").onchange= () => {
-    let checked = document.getElementById("expr-en").checked;
-    document.getElementById("expr-range").disabled = !checked;
-    document.getElementById("expr").disabled = !checked;
-    connection.send(`ae,expr-en,${checked? "on":"off"}`);
-}
-
-document.getElementById("expr").onclick= () => {
-    connection.send(`ae,expr,${document.getElementById("expr-range").value}`);
-}
-
-document.getElementById("again-en").onchange= () => {
-    let checked = document.getElementById("again-en").checked;
-    document.getElementById("again-range").disabled = !checked;
-    document.getElementById("again").disabled = !checked;
-    connection.send(`ae,again-en,${checked? "on":"off"}`);
-}
-
-document.getElementById("again").onclick= () => {
-    connection.send(`ae,again,${document.getElementById("again-range").value}`);
-}
-
-document.getElementById("dgain-en").onchange= () => {
-    let checked = document.getElementById("dgain-en").checked;
-    document.getElementById("dgain-range").disabled = !checked;
-    document.getElementById("dgain").disabled = !checked;
-    connection.send(`ae,dgain-en,${checked? "on":"off"}`);
-}
-
-document.getElementById("dgain").onclick= () => {
-    connection.send(`ae,dgain,${document.getElementById("dgain-range").value}`);
-}
-
-document.getElementById("ispgain-en").onchange= () => {
-    let checked = document.getElementById("ispgain-en").checked;
-    document.getElementById("ispgain-range").disabled = !checked;
-    document.getElementById("ispgain").disabled = !checked;
-    connection.send(`ae,ispgain-en,${checked? "on":"off"}`);
-}
-
-document.getElementById("ispgain").onclick= () => {
-    connection.send(`ae,ispgain,${document.getElementById("ispgain-range").value}`);
-}
-
-document.getElementById("wdr-en").onclick= () => {
-    let checked = document.getElementById("wdr-en").checked;
-    connection.send(`wdr,${checked? "on":"off"}`);
 }
 
 document.getElementById("brt").onclick= () => {
@@ -188,10 +218,6 @@ document.getElementById("sat").onclick = () => {
 
 const ranges = document.querySelectorAll('input[type="range"]');
 const paragraphs = {
-    "expr-range": document.getElementById("expr-value"),
-    "again-range": document.getElementById("again-value"),
-    "dgain-range": document.getElementById("dgain-value"),
-    "ispgain-range": document.getElementById("ispgain-value"),
     "brt-range": document.getElementById("brt-value"),
     "cnt-range": document.getElementById("cnt-value"),
     "shrp-range": document.getElementById("shrp-value"),

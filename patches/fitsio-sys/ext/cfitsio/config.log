@@ -27,8 +27,6 @@ uname -v = #1 SMP Thu Jan 11 04:09:03 UTC 2024
 /usr/bin/oslevel       = unknown
 /bin/universe          = unknown
 
-PATH: /atomskygaze/build/buildroot-2024.02/output/host/bin
-PATH: /atomskygaze/build/buildroot-2024.02/output/host/sbin
 PATH: /root/.vscode-server/bin/e170252f762678dec6ca2cc69aba1570769a5d39/bin/remote-cli
 PATH: /root/.cargo/bin
 PATH: /usr/local/sbin
@@ -263,8 +261,11 @@ configure:4393: checking for ar
 configure:4409: found /usr/bin/ar
 configure:4421: result: ar
 configure:4438: checking for mipsel-ingenic-linux-gnu-ranlib
-configure:4454: found /atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-ranlib
-configure:4465: result: mipsel-ingenic-linux-gnu-ranlib
+configure:4468: result: no
+configure:4478: checking for ranlib
+configure:4494: found /usr/bin/ranlib
+configure:4505: result: ranlib
+configure:4517: WARNING: using cross tools not prefixed with host triplet
 configure:4531: checking for stdlib.h
 configure:4531: result: yes
 configure:4531: checking for string.h
@@ -511,7 +512,7 @@ ac_cv_path_GREP=/usr/bin/grep
 ac_cv_prog_AR=ar
 ac_cv_prog_CC=/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc
 ac_cv_prog_CPP='/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -E'
-ac_cv_prog_RANLIB=mipsel-ingenic-linux-gnu-ranlib
+ac_cv_prog_ac_ct_RANLIB=ranlib
 ac_cv_prog_cc_c89=
 ac_cv_prog_cc_g=yes
 ac_cv_search_connect='none required'
@@ -562,7 +563,7 @@ PACKAGE_TARNAME=''
 PACKAGE_URL=''
 PACKAGE_VERSION=''
 PATH_SEPARATOR=':'
-RANLIB='mipsel-ingenic-linux-gnu-ranlib'
+RANLIB='ranlib'
 SHELL='/bin/bash'
 SHLIB_LD='/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc -shared -Wl,-soname,lib${PACKAGE}${SHLIB_SUFFIX}.${CFITSIO_SONAME}'
 SHLIB_SUFFIX='.so'

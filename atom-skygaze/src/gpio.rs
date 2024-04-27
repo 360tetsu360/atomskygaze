@@ -122,6 +122,9 @@ pub fn gpio_init() -> std::io::Result<()> {
         println!("gpio button already initialized.");
     }
 
+    ircut_on()?;
+    ircut_off()?;
+
     Ok(())
 }
 
@@ -131,19 +134,23 @@ pub enum IRCUTStatus {
 }
 
 pub fn ircut_on() -> std::io::Result<()> {
-    GPIO_IRCUT_TRIG2.set_value(1)?;
-    std::thread::sleep(std::time::Duration::from_millis(100));
-    GPIO_IRCUT_TRIG1.set_value(1)
-}
-
-pub fn ircut_off() -> std::io::Result<()> {
     GPIO_IRCUT_TRIG2.set_value(0)?;
     std::thread::sleep(std::time::Duration::from_millis(100));
     GPIO_IRCUT_TRIG1.set_value(0)
 }
 
+pub fn ircut_off() -> std::io::Result<()> {
+    GPIO_IRCUT_TRIG2.set_value(1)?;
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    GPIO_IRCUT_TRIG1.set_value(1)
+}
+
 pub fn irled_on() -> std::io::Result<()> {
     GPIO_LED_IR.set_value(1)
+}
+
+pub fn irled_off() -> std::io::Result<()> {
+    GPIO_LED_IR.set_value(0)
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -154,14 +161,14 @@ pub enum LEDType {
 
 pub fn led_on(led: LEDType) -> std::io::Result<()> {
     match led {
-        LEDType::Orange => GPIO_LED_ORANGE.set_value(1),
-        LEDType::Blue => GPIO_LED_BLUE.set_value(1),
+        LEDType::Orange => GPIO_LED_ORANGE.set_value(0),
+        LEDType::Blue => GPIO_LED_BLUE.set_value(0),
     }
 }
 
 pub fn led_off(led: LEDType) -> std::io::Result<()> {
     match led {
-        LEDType::Orange => GPIO_LED_ORANGE.set_value(0),
-        LEDType::Blue => GPIO_LED_BLUE.set_value(0),
+        LEDType::Orange => GPIO_LED_ORANGE.set_value(1),
+        LEDType::Blue => GPIO_LED_BLUE.set_value(1),
     }
 }
