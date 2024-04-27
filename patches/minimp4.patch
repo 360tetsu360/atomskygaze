@@ -1,0 +1,61 @@
+diff --git a/packages/minimp4-sys/Cargo.toml b/packages/minimp4-sys/Cargo.toml
+index 8db48b8..d735d36 100644
+--- a/packages/minimp4-sys/Cargo.toml
++++ b/packages/minimp4-sys/Cargo.toml
+@@ -13,5 +13,5 @@ repository = "https://github.com/darkskygit/minimp4.rs"
+ categories = ["external-ffi-bindings"]
+ 
+ [build-dependencies]
+-bindgen = "0.66.1"
++bindgen = "0.69"
+ cc = { version = "1.0.81", features = ["parallel"] }
+diff --git a/packages/minimp4-sys/build.rs b/packages/minimp4-sys/build.rs
+index 7add48a..405ff54 100644
+--- a/packages/minimp4-sys/build.rs
++++ b/packages/minimp4-sys/build.rs
+@@ -8,9 +8,16 @@ fn main() {
+     cc::Build::new()
+         .define("NDEBUG", Some("1"))
+         .file("minimp4.c")
++        .flag("-Wno-sign-compare")
++        .flag("-Wno-unused-variable")
++        .flag("-Wno-unused-function")
++        .flag("-Wno-discarded-qualifiers")
++        .flag("-Wno-implicit-fallthrough")
+         .compile("minimp4");
+     let bindings = bindgen::Builder::default()
+         .header("minimp4.h")
++        .clang_arg("-I/atomskygaze/build/buildroot-2024.02/output/host/mipsel-ingenic-linux-gnu/sysroot/usr/include")
++        .clang_arg("--target=mips-unknown-linux-gnu")
+         .generate()
+         .expect("Unable to generate bindings");
+     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+diff --git a/packages/minimp4/Cargo.toml b/packages/minimp4/Cargo.toml
+index 9cf419e..4bcee5f 100644
+--- a/packages/minimp4/Cargo.toml
++++ b/packages/minimp4/Cargo.toml
+@@ -17,5 +17,5 @@ aac = ["fdk-aac-sys"]
+ 
+ [dependencies]
+ libc = "0.2.140"
+-minimp4-sys = { workspace = true }
++minimp4-sys = { path="../minimp4-sys" }
+ fdk-aac-sys = { version = "0.5.0", optional = true }
+diff --git a/packages/minimp4/src/lib.rs b/packages/minimp4/src/lib.rs
+index 9eebb2c..e873f67 100644
+--- a/packages/minimp4/src/lib.rs
++++ b/packages/minimp4/src/lib.rs
+@@ -88,11 +88,11 @@ impl<W: Write + Seek> Mp4Muxer<W> {
+             MP4E_set_text_comment(self.muxer, self.str_buffer.last().unwrap().as_ptr());
+         }
+     }
+-    pub fn close(&self) -> &W {
++    pub fn close(self) -> W {
+         unsafe {
+             MP4E_close(self.muxer);
+         }
+-        &self.writer
++        self.writer
+     }
+ 
+     pub fn write_data(&mut self, offset: i64, buf: &[u8]) -> usize {

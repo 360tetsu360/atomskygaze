@@ -19,7 +19,7 @@ axum = { version="0.7.5", features = ["ws"] }
 tower-http = { version = "0.5.0", features = ["fs", "trace"] }
 futures = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
-minimp4 = { path = "../patches/minimp4_rs/packages/minimp4" }
+minimp4 = { path = "../submodules/minimp4.rs/packages/minimp4" }
 chrono = "0.4.37"
 lz4 = "1.24"
 serde = { version = "1.0", features = ["derive"] }

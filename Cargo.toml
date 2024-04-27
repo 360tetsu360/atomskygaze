@@ -6,4 +6,4 @@ members = [
 ]
 
 [patch.crates-io]
-fitsio-sys = { path = "./patches/fitsio-sys" }
+fitsio-sys = { path = "./submodules/rust-fitsio/fitsio-sys" }

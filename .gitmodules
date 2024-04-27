@@ -1,0 +1,6 @@
+[submodule "submodules/rust-fitsio"]
+	path = submodules/rust-fitsio
+	url = https://github.com/simonrw/rust-fitsio
+[submodule "submodules/minimp4.rs"]
+	path = submodules/minimp4.rs
+	url = https://github.com/darkskygit/minimp4.rs

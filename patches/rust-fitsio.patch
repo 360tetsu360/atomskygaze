@@ -1,0 +1,12 @@
+diff --git a/fitsio-sys/build.rs b/fitsio-sys/build.rs
+index 7b32857..8b2cee8 100644
+--- a/fitsio-sys/build.rs
++++ b/fitsio-sys/build.rs
+@@ -44,6 +44,7 @@ fn compile_cfitsio() -> PathBuf {
+         .cflag(opt_flag)
+         .cflag("-fPIE")
+         .insource(true)
++        .config_option("host", Some("mipsel-ingenic-linux-gnu"))
+         .build();
+     dst
+ }
