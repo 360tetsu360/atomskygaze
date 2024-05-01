@@ -60,13 +60,19 @@ elif [ "0x424c" = "$VENDERID" ]; then
     insmod /atom/system/driver/bl_fdrv.ko
 fi
 
+# AP_MODE or CLIENT_MODE
+CONFIG_FLAG="AP_MODE"
+
 if [ -f /media/mmc/wpa_supplicant.conf ] ; then
+  CONFIG_FLAG="CLIENT_MODE"
   cat /media/mmc/wpa_supplicant.conf > /configs/etc/wpa_supplicant.conf
 else
   USER_CONFIG=/atom/configs/.user_config
   SSID=$(awk -F "=" '/\[NET\]/ { f = 1; } /ssid=/ {if(!f) next; gsub(/\/$/, "", $2); print $2}' $USER_CONFIG)
   PSK=$(awk -F "=" '/\[NET\]/ { f = 1; } /password=/ {if(!f) next; gsub(/\/$/, "", $2); print $2}' $USER_CONFIG)
-  cat > /configs/etc/wpa_supplicant.conf << EOF
+  if [ -n "$SSID" ] && [ -n "$PSK" ]; then
+    CONFIG_FLAG="CLIENT_MODE"
+    cat > /configs/etc/wpa_supplicant.conf << EOF
 ctrl_interface=/var/run/wpa_supplicant
 update_config=1
 network={
@@ -75,24 +81,40 @@ network={
   scan_ssid=1
 }
 EOF
+
+  fi
 fi
 
-count=0
-while ! ip link | grep wlan0 > /dev/null ; do
-  sleep 0.5
-  let count++
-  [ 20 -le $count ] && break
-done
+if [ "$CONFIG_FLAG" == "CLIENT_MODE" ]; then
 
-HWADDR=$(awk -F "=" '/(CONFIG_INFO|NETRELATED_MAC)=/ { print substr($2,1,2) ":" substr($2,3,2) ":" substr($2,5,2) ":" substr($2,7,2) ":" substr($2,9,2) ":" substr($2,11,2); exit;}' /atom/configs/.product_config)
-ifconfig wlan0 hw ether $HWADDR up
-wpa_supplicant -f /tmp/log/wpa_supplicant.log -D nl80211 -i wlan0 -c /configs/etc/wpa_supplicant.conf -B
-udhcpc -i wlan0 -x hostname:atomcam -p /var/run/udhcpc.pid -b &
+  count=0
+  while ! ip link | grep wlan0 > /dev/null ; do
+    sleep 0.5
+    let count++
+    [ 20 -le $count ] && break
+  done
 
-count=0
-while ! ifconfig wlan0 | grep 'inet addr' > /dev/null
-do
-  sleep 0.5
-  let count++
-  [ 20 -le $count ] && break
-done
+  HWADDR=$(awk -F "=" '/(CONFIG_INFO|NETRELATED_MAC)=/ { print substr($2,1,2) ":" substr($2,3,2) ":" substr($2,5,2) ":" substr($2,7,2) ":" substr($2,9,2) ":" substr($2,11,2); exit;}' /atom/configs/.product_config)
+  ifconfig wlan0 hw ether $HWADDR up
+  wpa_supplicant -f /tmp/log/wpa_supplicant.log -D nl80211 -i wlan0 -c /configs/etc/wpa_supplicant.conf -B
+  udhcpc -i wlan0 -x hostname:atomcam -p /var/run/udhcpc.pid -b &
+
+  count=0
+  while ! ifconfig wlan0 | grep 'inet addr' > /dev/null
+  do
+    sleep 0.5
+    let count++
+    [ 20 -le $count ] && break
+  done
+fi
+
+#elif [ "$CONFIG_FLAG" == "AP_MODE" ]; then
+  #echo "Starting in AP mode"
+
+  #hostapd -B /etc/hostapd.conf
+	#[ $? = 0 ] && echo "OK" || echo "FAIL"
+
+  #dnsmasq -C /etc/dnsmasq.conf
+#else
+#  echo "Unknown mode"
+#fi

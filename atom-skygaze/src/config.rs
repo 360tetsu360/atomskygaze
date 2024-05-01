@@ -64,3 +64,23 @@ pub async fn load_from_file() -> std::io::Result<AppState> {
         logs: vec![],
     })
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct NetworkConfig {
+    pub ap_mode: bool,
+    pub ssid: String,
+    pub psk: String,
+}
+
+pub async fn load_netconf() -> std::io::Result<NetworkConfig> {
+    let content = tokio::fs::read_to_string("/media/mmc/net_config.toml").await?;
+    let netconf: NetworkConfig = toml::from_str(&content).unwrap();
+    Ok(netconf)
+}
+
+pub async fn save_netconf(netconf: NetworkConfig) -> std::io::Result<()> {
+    let mut file = File::create("/media/mmc/net_config.toml").await?;
+    let toml = toml::to_string(&netconf).unwrap();
+    file.write_all(toml.as_bytes()).await?;
+    file.sync_all().await
+}

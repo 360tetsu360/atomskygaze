@@ -19,16 +19,14 @@ use std::fs::OpenOptions;
 use std::io::Cursor;
 use std::io::Write;
 use std::os::raw::c_void;
+use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
-use tokio::fs::File;
-use tokio::io::BufWriter;
-use tokio::sync::{mpsc, watch};
-
-type DetectionSender = Arc<Mutex<Vec<(DateTime<FixedOffset>, DateTime<FixedOffset>)>>>;
+use tokio::sync::watch;
 
 const RESIZED_X: usize = 32;
 const RESIZED_Y: usize = 18;
+const ROI_SIZE: i32 = 20;
 
 #[derive(Copy, Clone, Debug)]
 struct Blob {
@@ -116,7 +114,7 @@ impl Blob {
 }
 
 pub unsafe fn init() -> bool {
-    if IMP_FrameSource_SetFrameDepth(0, 2) < 0 {
+    if IMP_FrameSource_SetFrameDepth(0, 3) < 0 {
         error!("IMP_FrameSource_SetFrameDepth failed");
         return false;
     }
@@ -305,7 +303,7 @@ fn get_move_area(diff: &Mat, mask: &[u8], std_weight: f64, threshold: f64) -> Ve
     for y in 0..18 {
         let mut new_row = vec![];
         for x in 0..32 {
-            let roi = Rect::new(x * 20, y * 20, 20, 20);
+            let roi = Rect::new(x * ROI_SIZE, y * ROI_SIZE, ROI_SIZE, ROI_SIZE);
             let cropped = Mat::roi(diff, roi).unwrap();
             let (mean, stddev): (f64, f64) = {
                 let mut mean = Scalar_::default();
@@ -329,75 +327,22 @@ fn get_move_area(diff: &Mat, mask: &[u8], std_weight: f64, threshold: f64) -> Ve
     find_bounding_rectangles(&resized)
 }
 
-fn composite(diff_list: &mut VecDeque<Mat>) -> Mat {
+unsafe fn composite(diff_list: &mut VecDeque<Vec<u8>>) -> Vec<u8> {
     let mut res = diff_list.pop_front().unwrap();
-    while let Some(diff_list) = diff_list.pop_front() {
-        let mut result = Mat::default();
-        opencv::core::add(&res, &diff_list, &mut result, &no_array(), -1).unwrap();
-        res = result;
+    while let Some(diff) = diff_list.pop_front() {
+        buffer_add(res.as_ptr(), diff.as_ptr(), res.as_mut_ptr(), res.len());
     }
 
     res
 }
 
-pub async fn save_stream_s(mut rx: mpsc::Receiver<(u32, String)>) {
-    while let Some((frame_addr, file_name)) = rx.recv().await {
-        tokio::spawn(async move {
-            let file = File::create(&file_name).await.unwrap();
-            let mut buf_writer = BufWriter::new(file);
-            unsafe {
-                let img_buffer = std::slice::from_raw_parts(
-                    (*(frame_addr as *mut isvp_sys::IMPFrameInfo)).virAddr as *const u8,
-                    (*(frame_addr as *mut isvp_sys::IMPFrameInfo)).size as usize,
-                );
-
-                let start = std::time::Instant::now();
-
-                tokio::io::AsyncWriteExt::write_all(&mut buf_writer, img_buffer)
-                    .await
-                    .unwrap();
-
-                println!(
-                    "encoding time {}",
-                    std::time::Instant::now().duration_since(start).as_micros()
-                );
-
-                let st = std::time::Instant::now();
-                IMP_FrameSource_ReleaseFrame(0, frame_addr as *mut isvp_sys::IMPFrameInfo);
-                println!(
-                    "release {}",
-                    std::time::Instant::now().duration_since(st).as_micros()
-                );
-            }
-        });
-    }
-}
-
-/*pub unsafe fn save_stream(tx: mpsc::Sender<(u32, String)>) {
-    loop {
-        let now: DateTime<Utc> = Utc::now();
-        let time: DateTime<FixedOffset> =
-            now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
-        let file_name = time
-            .format("/media/mmc/tmp/yuv_list_%Y%m%d-%H%M%S-%3f")
-            .to_string();
-
-        let mut full_frame: *mut IMPFrameInfo = std::ptr::null_mut();
-        IMP_FrameSource_GetFrame(0, &mut full_frame);
-
-        let frame_addr = full_frame as u32;
-        tx.send((frame_addr, file_name));
-    }
-}*/
-
 pub unsafe fn start(
     app_state: Arc<Mutex<AppState>>,
-    sender: DetectionSender,
+    sender: mpsc::Sender<Option<DateTime<FixedOffset>>>,
     log_tx: watch::Sender<LogType>,
 ) {
     let mut last_frame: *mut IMPFrameInfo = std::ptr::null_mut();
-    let mut last_gray = Mat::default();
-    let mut diff_list = VecDeque::<Mat>::with_capacity(10);
+    let mut diff_list = VecDeque::<Vec<u8>>::with_capacity(10);
     let mut detection_start: DateTime<FixedOffset> =
         Utc::now().with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
 
@@ -416,27 +361,34 @@ pub unsafe fn start(
         IMP_FrameSource_GetFrame(1, &mut new_frame);
 
         let (img_width, img_height) = ((*new_frame).width, (*new_frame).height);
-        let new_gray = Mat::new_rows_cols_with_data_def(
-            img_height as i32,
-            img_width as i32,
-            CV_8UC1,
-            (*new_frame).virAddr as *mut c_void,
-        )
-        .unwrap();
 
         let mut app_state_tmp = app_state.lock().unwrap();
         if app_state_tmp.detect && !last_frame.is_null() {
-            let mut diff = Mat::default();
+            let mut diff = vec![0u8; 640*360];
 
-            absdiff(&new_gray, &last_gray, &mut diff).unwrap();
-            //let mut jpeg_buff = Vector::<u8>::new();
-            //imencode_def(".jpg", &diff, &mut jpeg_buff).unwrap();
-            //tx.send(jpeg_buff.to_vec()).unwrap();
+            // MXU2.0 SIMD128
+            // four time faster than OpenCV absdiff().
+            buffer_absdiff(
+                (*new_frame).virAddr as *const u8,
+                (*last_frame).virAddr as *const u8,
+                diff.as_mut_ptr(),
+                (img_height * img_width) as usize,
+            );
+
 
             diff_list.push_back(diff);
 
-            if diff_list.len() == 10 {
-                let integrated_diff = composite(&mut diff_list);
+            if diff_list.len() == 5 {
+
+                let mut diff_buff = composite(&mut diff_list);
+                let integrated_diff = Mat::new_rows_cols_with_data_def(
+                    img_height as i32,
+                    img_width as i32,
+                    CV_8UC1,
+                    diff_buff.as_mut_ptr() as *mut c_void,
+                )
+                .unwrap();
+
                 let boxes = get_move_area(
                     &integrated_diff,
                     &app_state_tmp.mask,
@@ -450,7 +402,9 @@ pub unsafe fn start(
                         continue;
                     }
 
-                    let cropped = integrated_diff.roi(rect.to_rect_with_scalar(20)).unwrap();
+                    let cropped = integrated_diff
+                        .roi(rect.to_rect_with_scalar(ROI_SIZE))
+                        .unwrap();
                     let mut lines: Vector<Vec4i> = Vector::new();
                     let mut fld = create_fast_line_detector(
                         app_state_tmp.detection_config.length_threshold as i32,
@@ -468,7 +422,8 @@ pub unsafe fn start(
                         let time: DateTime<FixedOffset> =
                             now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
                         if detecting_flag == 0 {
-                            detection_start = time - Duration::seconds(2);
+                            sender.send(Some(time)).unwrap();
+                            detection_start = time;
                         }
                         println!("[{}] Meteor Detected", time);
                         writeln!(file, "[{}] detected", time).unwrap();
@@ -480,20 +435,21 @@ pub unsafe fn start(
             if detecting_flag != 0 {
                 detecting_flag -= 1;
                 if detecting_flag == 0 {
+                    sender.send(None).unwrap();
                     println!("saving detection");
-                    let now: DateTime<Utc> = Utc::now();
-                    let time: DateTime<FixedOffset> =
-                        now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
-                    sender.lock().unwrap().push((detection_start, time));
 
-                    let fractional_second =
-                        (detection_start.timestamp_subsec_millis() as f64) / 100.0;
+                    let fractional_second = (detection_start.timestamp_subsec_millis() as f64) / 100.0;
                     let timestamp = format!(
                         "{}.{}",
                         detection_start.format("%Y-%m-%d %H:%M:%S"),
                         fractional_second as i32
                     );
-                    let log = LogType::Detection(timestamp);
+
+                    let mp4path = detection_start
+                        .format("%Y%m%d%H%M%S.mp4")
+                        .to_string();
+
+                    let log = LogType::Detection(timestamp, mp4path);
 
                     let log_clone = log.clone();
                     log_tx.send(log_clone).unwrap();
@@ -505,7 +461,6 @@ pub unsafe fn start(
 
         IMP_FrameSource_ReleaseFrame(1, last_frame);
         last_frame = new_frame;
-        last_gray = new_gray;
     }
 }
 

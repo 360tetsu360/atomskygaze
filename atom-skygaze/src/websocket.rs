@@ -1,4 +1,6 @@
+use crate::config::save_netconf;
 use crate::config::save_to_file;
+use crate::config::NetworkConfig;
 use crate::gpio::*;
 use crate::AppState;
 use axum::extract::{
@@ -22,7 +24,7 @@ type AppStateWs = State<(
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum LogType {
-    Detection(String),
+    Detection(String, String),
     None,
 }
 
@@ -172,9 +174,9 @@ pub async fn handle_socket(
                         "det" => {
                             if text.len() == 2 {
                                 if text[1] == "on" {
-                                    (*app_state.lock().unwrap()).detect = true;
+                                    app_state.lock().unwrap().detect = true;
                                 } else if text[1] == "off" {
-                                    (*app_state.lock().unwrap()).detect = false;
+                                    app_state.lock().unwrap().detect = false;
                                 }
                             }
                         }
@@ -190,6 +192,35 @@ pub async fn handle_socket(
                         "save" => {
                             let app_state_clone = (*app_state.lock().unwrap()).clone();
                             tokio::spawn(save_to_file(app_state_clone));
+                        }
+                        "netconf" => {
+                            println!("AAA");
+                            if text.len() == 4 {
+                                let mut netconf = NetworkConfig {
+                                    ap_mode: false,
+                                    ssid: "".to_string(),
+                                    psk: "".to_string(),
+                                };
+
+                                if text[1] == "on" {
+                                    netconf.ap_mode = true;
+                                } else if text[1] == "off" {
+                                    netconf.ap_mode = false;
+                                } else {
+                                    return;
+                                }
+
+                                netconf.ssid = text[2].to_string();
+                                netconf.psk = text[3].to_string();
+
+                                tokio::spawn(save_netconf(netconf));
+                            }
+                        }
+                        "reboot" => {
+                            println!("AAA");
+                            unsafe {
+                                SU_Base_Reboot();
+                            }
                         }
                         _ => {}
                     }
@@ -209,8 +240,8 @@ pub async fn handle_socket(
                 val = log_rx.changed() => {
                     if val.is_ok() {
                         let msg = match log_rx.borrow_and_update().clone() {
-                            LogType::Detection(time) => {
-                                format!("{{\"type\":\"detected\",\"payload\":{{\"timestamp\":\"{}\"}}}}", time)
+                            LogType::Detection(timestamp, mp4path) => {
+                                format!("{{\"type\":\"detected\",\"payload\":{{\"timestamp\":\"{}\",\"saved_file\":\"{}\"}}}}", timestamp, mp4path)
                             },
                             _ => "".to_string(),
                         };

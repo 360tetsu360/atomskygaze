@@ -9,17 +9,18 @@ use crate::imp::*;
 use crate::isp::log_all_value;
 use crate::osd::*;
 use crate::record::*;
-use crate::trim::trim_loop;
 use crate::websocket::*;
 use axum::routing::get;
 use axum::Router;
 use serde::{Deserialize, Serialize};
+use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 use std::{net::SocketAddr, path::PathBuf};
 use tokio::sync::watch;
 use tower_http::services::ServeDir;
+use crate::download::download_file;
 
 mod config;
 mod detection;
@@ -29,8 +30,8 @@ mod imp;
 mod isp;
 mod osd;
 mod record;
-mod trim;
 mod websocket;
+mod download;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DetectionConfig {
@@ -97,7 +98,7 @@ async fn main() {
     let (tx, rx) = watch::channel(vec![]);
     let (logtx, logrx) = watch::channel(LogType::None);
     let app_state_common = Arc::new(Mutex::new(app_state));
-    let detected_msg = Arc::new(Mutex::new(vec![]));
+    let (detected_tx, detected_rx) = mpsc::channel();
 
     gpio_init().unwrap();
 
@@ -139,12 +140,6 @@ async fn main() {
         }
     });
 
-    let detected_msg_instance = detected_msg.clone();
-    thread::spawn(move || {
-        trim_loop(detected_msg_instance);
-    });
-
-    let detected_msg_instance = detected_msg.clone();
     let app_state_common_instance1 = app_state_common.clone();
     let app_state_common_instance2 = app_state_common.clone();
 
@@ -162,12 +157,14 @@ async fn main() {
         thread::spawn(move || {
             imp_osd_start(grp_num, font_handle, app_state_common_instance1);
         });
-        mp4save_loops();
+
+        mp4save_loops(detected_rx);
+
         thread::spawn(|| {
             jpeg_start(tx);
         });
 
-        start(app_state_common_instance2, detected_msg_instance, logtx);
+        start(app_state_common_instance2, detected_tx, logtx);
     });
 
     let assets_dir = PathBuf::from("/media/mmc/assets/");
@@ -175,6 +172,7 @@ async fn main() {
     let app = Router::new()
         .fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
         .route("/ws", get(handler))
+        .route("/download", get(download_file))
         .with_state((rx, app_state_common, logrx));
 
     // run it with hyper

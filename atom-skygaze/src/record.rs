@@ -1,7 +1,10 @@
+use chrono::DateTime;
+use chrono::FixedOffset;
 use chrono::{Datelike, Duration, Local, Timelike};
 use isvp_sys::*;
 use log::error;
 use minimp4::Mp4Muxer;
+use std::collections::VecDeque;
 use std::fs::File;
 use std::path::Path;
 use std::sync::mpsc;
@@ -9,15 +12,20 @@ use std::thread;
 
 const REGULAR_FPS: u32 = 25;
 
-pub fn mp4save_loops() {
+pub fn mp4save_loops(detected_rx: mpsc::Receiver<Option<DateTime<FixedOffset>>>) {
     let (tx, rx) = mpsc::channel();
 
-    thread::spawn(move || unsafe { get_h264_stream(tx) });
+    thread::spawn(move || unsafe { get_h264_stream(tx, detected_rx) });
 
     thread::spawn(move || sync_file(rx));
 }
 
-unsafe fn get_h264_stream(tx: mpsc::Sender<File>) -> bool {
+unsafe fn get_h264_stream(tx: mpsc::Sender<File>, detected_rx: mpsc::Receiver<Option<DateTime<FixedOffset>>>) -> bool {
+    let mut queue = VecDeque::<Vec<u8>>::new();
+
+    let mut is_detecting = false;
+    let mut detect_video = None;
+
     if IMP_Encoder_StartRecvPic(3) < 0 {
         error!("IMP_Encoder_StartRecvPic failed");
         return false;
@@ -74,6 +82,32 @@ unsafe fn get_h264_stream(tx: mpsc::Sender<File>) -> bool {
         mp4muxer.init_video(1920, 1080, true, &mp4title);
 
         loop {
+            if let Ok(det) = detected_rx.try_recv() {
+                if det.is_some() && !is_detecting {
+                    let time = det.unwrap();
+                    let mp4path = time
+                        .format("/media/mmc/records/detected/%Y%m%d%H%M%S.mp4")
+                        .to_string();
+
+                    let mp4title = time.format("Detected %Y-%m-%d %H:%M:%S").to_string();
+                    let file = File::create(mp4path).unwrap();
+                    let mut det_mp4muxer = Mp4Muxer::new(file);
+                    det_mp4muxer.init_video(1920, 1080, true, &mp4title);
+
+                    for frame in queue.iter() {
+                        det_mp4muxer.write_video_with_fps(frame, REGULAR_FPS);
+                    }
+                    detect_video = Some(det_mp4muxer);
+                    is_detecting = true;
+                }
+
+                if det.is_none() && is_detecting {
+                    let file = detect_video.take().unwrap().close();
+                    tx.send(file).unwrap();
+                    is_detecting = false;
+                }
+            }
+
             let current_time = Local::now() + Duration::hours(9);
             if current_time >= target_time {
                 break;
@@ -134,12 +168,36 @@ unsafe fn get_h264_stream(tx: mpsc::Sender<File>) -> bool {
                             (pack.length - rem_size) as usize,
                         );
                         mp4muxer.write_video_with_fps(src2, fps);
+
+                        if is_detecting {
+                            detect_video
+                                .as_mut()
+                                .unwrap()
+                                .write_video_with_fps(src1, fps);
+                            detect_video
+                                .as_mut()
+                                .unwrap()
+                                .write_video_with_fps(src2, fps);
+                        } else {
+                            let buff: Vec<u8> = [src1, src2].concat();
+                            queue.push_back(buff);
+                        }
                     } else {
                         let src = std::slice::from_raw_parts(
                             (stream.virAddr + pack.offset) as *const u8,
                             pack.length as usize,
                         );
                         mp4muxer.write_video_with_fps(src, fps);
+
+                        if is_detecting {
+                            detect_video
+                                .as_mut()
+                                .unwrap()
+                                .write_video_with_fps(src, fps);
+                        } else {
+                            let buff = src.to_vec();
+                            queue.push_back(buff);
+                        }
                     }
                 }
             }
@@ -147,6 +205,10 @@ unsafe fn get_h264_stream(tx: mpsc::Sender<File>) -> bool {
             if IMP_Encoder_ReleaseStream(3, &mut stream) < 0 {
                 error!("IMP_Encoder_ReleaseStream failed");
                 return false;
+            }
+
+            if queue.len() > 51 {
+                queue.pop_front();
             }
         }
 

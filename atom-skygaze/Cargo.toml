@@ -25,3 +25,8 @@ lz4 = "1.24"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8.12"
+tokio-util = { version = "0.7.10", features = ["io"] }
+
+[profile.release]
+lto = true
+strip = "symbols" 
