@@ -74,11 +74,20 @@ connection.onmessage = function(event) {
 
         if (packet.type === "detected") {
             const timestamp = packet.payload.timestamp;
+            const record_path = packet.payload.saved_file;
             var log_box = document.getElementById("log-box");
 
             var new_item = document.createElement("div");
             new_item.className = "list-item";
-            new_item.textContent = `[${timestamp}] Meteor Detected`;
+
+            var oneline = document.createElement("div");
+            oneline.className = "one-line";
+            oneline.textContent = `[${timestamp}] Meteor Detected`;
+            var download = document.createElement("a");
+            download.href = `/download?filename=${record_path}`;
+            download.textContent = "Download";
+            oneline.appendChild(download);
+            new_item.appendChild(oneline);
 
             if (log_box.firstChild) {
                 log_box.insertBefore(new_item, log_box.firstChild);
@@ -115,12 +124,22 @@ connection.onmessage = function(event) {
             document.getElementById("sat-value").textContent = `${app_state.saturation}`;
 
             for (const log_item of app_state.logs) {
-                const timestamp = log_item.Detection;
+                console.log(log_item);
+                const timestamp = log_item.Detection[0];
+                const record_path = log_item.Detection[1];
                 var log_box = document.getElementById("log-box");
 
                 var new_item = document.createElement("div");
                 new_item.className = "list-item";
-                new_item.textContent = `[${timestamp}] Meteor Detected`;
+
+                var oneline = document.createElement("div");
+                oneline.className = "one-line";
+                oneline.textContent = `[${timestamp}] Meteor Detected`;
+                var download = document.createElement("a");
+                download.href = `/download?filename=${record_path}`;
+                download.textContent = "Download";
+                oneline.appendChild(download);
+                new_item.appendChild(oneline);
     
                 if (log_box.firstChild) {
                     log_box.insertBefore(new_item, log_box.firstChild);
@@ -143,6 +162,16 @@ connection.onmessage = function(event) {
 connection.onclose = function() {
     console.log("Close");
 };
+
+document.getElementById("wifi-settings").onclick = () => {
+    const dialog = document.getElementById("wifi-dialog");
+    dialog.showModal();
+}
+
+document.getElementById("wifi-dialog-close").onclick = () => {
+    const dialog = document.getElementById("wifi-dialog");
+    dialog.close();
+}
 
 document.getElementById("shw_msk").onchange = () => {
     let checked = document.getElementById("shw_msk").checked; 
@@ -214,6 +243,34 @@ document.getElementById("shrp").onclick= () => {
 
 document.getElementById("sat").onclick = () => {
     connection.send(`proc,sat,${document.getElementById("sat-range").value}`);
+}
+
+document.getElementById("save-netconf").onclick = () => {
+    let ap_mode = document.getElementById("apmode").checked;
+    let ssid = document.getElementById("ssid-input").value;
+    let psk = document.getElementById("psk-input").value;
+    if(!isValidPsk(psk)) {
+        window.alert("PSK is invalid.");
+        return;
+    }
+    connection.send(`netconf,${ap_mode?"on":"off"},${ssid},${psk}`);
+}
+
+document.getElementById("reboot").onclick = () => {
+    connection.send("reboot");
+}
+
+function isValidPsk(psk) {
+    if (psk.length < 8 || psk.length > 63) {
+        return false;
+    }
+
+    const asciiRegex = /^[\x20-\x7E]+$/;
+    if (!asciiRegex.test(psk)) {
+        return false;
+    }
+
+    return true;
 }
 
 const ranges = document.querySelectorAll('input[type="range"]');
