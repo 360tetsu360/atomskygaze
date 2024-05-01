@@ -1,6 +1,3 @@
-:root {
-}
-
 html {
     --c-dark: #333;
     --c-darker: #222;
@@ -85,6 +82,23 @@ button {
 
 p {
     margin: 0;
+}
+
+dialog {
+    border: none;
+    border-radius: 15px;
+    padding: 20px;
+    width: 80%;
+    max-width: 80%;
+    height: 80%;
+    text-align: center;
+    background: var(--c-darker);
+    color: white;
+    overflow: auto;
+}
+
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.5);
 }
 
 .grid-container {
@@ -280,4 +294,58 @@ p {
 
 #log-box .list-item:hover {
     background-color: var(--c-dark);
+}
+
+#log-box .list-item .one-line {
+    font-weight: normal;
+    display: flex;
+    flex-direction: row;
+    justify-content:space-between;
+    width: 100%;
+    padding: 10px;
+}
+
+.one-line-title .dialog-close {
+    height: 30px;
+    width: fit-content;
+    background-color: transparent;
+    font-size: 30px;
+    border: none;
+    cursor: pointer;
+    color: white;
+}
+
+.one-line-title {
+    display: flex;
+    flex-direction: row;
+    justify-content:space-between;
+    font-size: 30px;
+}
+
+.one-line-sub {
+    font-weight: normal;
+    font-size: 18px;
+    display: flex;
+    flex-direction: row;
+    justify-content:space-between;
+}
+
+dialog .toggle .slider {
+    right: 0px;
+}
+
+.styled-input {
+    border: 2px solid var(--c-line);
+    border-radius: 5px; 
+    font-size: 16px; 
+    transition: all 0.3s;
+    width: 100%;
+    max-width: 200px;
+    background-color: var(--c-dark);
+    color: white;
+}
+
+.styled-input:focus {
+    border-color: #3498db;
+    outline: none;
 }
