@@ -1,4 +1,3 @@
-use crate::config::save_netconf;
 use crate::config::save_to_file;
 use crate::config::NetworkConfig;
 use crate::gpio::*;
@@ -194,7 +193,6 @@ pub async fn handle_socket(
                             tokio::spawn(save_to_file(app_state_clone));
                         }
                         "netconf" => {
-                            println!("AAA");
                             if text.len() == 4 {
                                 let mut netconf = NetworkConfig {
                                     ap_mode: false,
@@ -213,11 +211,10 @@ pub async fn handle_socket(
                                 netconf.ssid = text[2].to_string();
                                 netconf.psk = text[3].to_string();
 
-                                tokio::spawn(save_netconf(netconf));
+                                //tokio::spawn(save_netconf(netconf));
                             }
                         }
                         "reboot" => {
-                            println!("AAA");
                             unsafe {
                                 SU_Base_Reboot();
                             }

@@ -427,7 +427,7 @@ pub unsafe fn start(
                         }
                         println!("[{}] Meteor Detected", time);
                         writeln!(file, "[{}] detected", time).unwrap();
-                        detecting_flag = 25;
+                        detecting_flag = 75;
                     }
                 }
             }

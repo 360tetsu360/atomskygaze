@@ -49,11 +49,6 @@ impl GPIOInterface {
         Ok(ret.parse().unwrap())
     }
 
-    pub fn is_on(&self) -> std::io::Result<bool> {
-        let active_low = self.active_low()?;
-        Ok(self.value()? != active_low)
-    }
-
     fn read(path: &str) -> std::io::Result<String> {
         let ret = fs::read_to_string(path)?;
         Ok(ret)
@@ -128,11 +123,6 @@ pub fn gpio_init() -> std::io::Result<()> {
     Ok(())
 }
 
-pub enum IRCUTStatus {
-    On,
-    Off,
-}
-
 pub fn ircut_on() -> std::io::Result<()> {
     GPIO_IRCUT_TRIG2.set_value(0)?;
     std::thread::sleep(std::time::Duration::from_millis(100));
@@ -161,14 +151,47 @@ pub enum LEDType {
 
 pub fn led_on(led: LEDType) -> std::io::Result<()> {
     match led {
-        LEDType::Orange => GPIO_LED_ORANGE.set_value(0),
-        LEDType::Blue => GPIO_LED_BLUE.set_value(0),
+        LEDType::Orange => {
+            let active_low = GPIO_LED_ORANGE.active_low()?;
+            let value = match active_low {
+                0 => 1,
+                1 => 0,
+                _ => unreachable!(),
+            };
+            GPIO_LED_ORANGE.set_value(value)
+        },
+        LEDType::Blue => {
+            let active_low = GPIO_LED_BLUE.active_low()?;
+            let value = match active_low {
+                0 => 1,
+                1 => 0,
+                _ => unreachable!(),
+            };
+            GPIO_LED_BLUE.set_value(value)
+        },
     }
 }
 
 pub fn led_off(led: LEDType) -> std::io::Result<()> {
     match led {
-        LEDType::Orange => GPIO_LED_ORANGE.set_value(1),
-        LEDType::Blue => GPIO_LED_BLUE.set_value(1),
+        LEDType::Orange => {
+            let active_low = GPIO_LED_ORANGE.active_low()?;
+            let value = match active_low {
+                0 => 0,
+                1 => 1,
+                _ => unreachable!(),
+            };
+            GPIO_LED_ORANGE.set_value(value)
+        },
+        LEDType::Blue => {
+            let active_low = GPIO_LED_BLUE.active_low()?;
+            let value = match active_low {
+                0 => 0,
+                1 => 1,
+                _ => unreachable!(),
+            };
+
+            GPIO_LED_BLUE.set_value(value)
+        },
     }
 }

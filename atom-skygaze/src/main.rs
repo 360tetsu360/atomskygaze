@@ -1,6 +1,3 @@
-#![allow(dead_code)]
-#![feature(div_duration)]
-
 use crate::config::load_from_file;
 use crate::config::save_to_file;
 use crate::detection::*;
