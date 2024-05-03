@@ -146,6 +146,17 @@ pub async fn handle_socket(
                                 }
                             }
                         }
+                        "fps" => {
+                            if text.len() == 2 {
+                                let fps = text[1].parse().unwrap();
+                                if matches!(fps, 5 | 10 | 15 | 20 | 25) {
+                                    app_state.lock().unwrap().fps = fps;
+                                    unsafe {
+                                        IMP_ISP_Tuning_SetSensorFPS(fps, 1);
+                                    }
+                                }
+                            }
+                        }
                         "proc" => {
                             if text.len() == 3 {
                                 let v = text[2].parse().unwrap();

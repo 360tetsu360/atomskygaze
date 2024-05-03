@@ -1,3 +1,4 @@
+use crate::AppState;
 use chrono::DateTime;
 use chrono::FixedOffset;
 use chrono::{Datelike, Duration, Local, Timelike};
@@ -11,17 +12,16 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-const REGULAR_FPS: u32 = 25;
-
 pub fn mp4save_loops(
     detected_rx: mpsc::Receiver<Option<DateTime<FixedOffset>>>,
+    app_state: Arc<Mutex<AppState>>,
     flag: Arc<Mutex<bool>>,
 ) {
     let (tx, rx) = mpsc::channel();
 
     thread::Builder::new()
         .name("h264_loop".to_string())
-        .spawn(move || unsafe { get_h264_stream(tx, detected_rx, flag) })
+        .spawn(move || unsafe { get_h264_stream(tx, detected_rx, app_state, flag) })
         .unwrap();
 
     thread::Builder::new()
@@ -33,10 +33,10 @@ pub fn mp4save_loops(
 unsafe fn get_h264_stream(
     tx: mpsc::Sender<File>,
     detected_rx: mpsc::Receiver<Option<DateTime<FixedOffset>>>,
+    app_state: Arc<Mutex<AppState>>,
     flag: Arc<Mutex<bool>>,
 ) -> bool {
     let mut queue = VecDeque::<Vec<u8>>::new();
-
     let mut is_detecting = false;
     let mut detect_video = None;
 
@@ -116,6 +116,13 @@ unsafe fn get_h264_stream(
             }
             drop(shutdown_flag);
 
+            let app_state_tmp = match app_state.lock() {
+                Ok(guard) => guard,
+                Err(_) => continue,
+            };
+            let fps = app_state_tmp.fps;
+            drop(app_state_tmp);
+
             if let Ok(det) = detected_rx.try_recv() {
                 if det.is_some() && !is_detecting {
                     let time = det.unwrap();
@@ -129,7 +136,7 @@ unsafe fn get_h264_stream(
                     det_mp4muxer.init_video(1920, 1080, true, &mp4title);
 
                     for frame in queue.iter() {
-                        det_mp4muxer.write_video_with_fps(frame, REGULAR_FPS);
+                        det_mp4muxer.write_video_with_fps(frame, fps);
                     }
                     detect_video = Some(det_mp4muxer);
                     is_detecting = true;
@@ -147,9 +154,9 @@ unsafe fn get_h264_stream(
                 break;
             }
 
-            if IMP_Encoder_PollingStream(3, 1000) < 0 {
+            if IMP_Encoder_PollingStream(3, 10000) < 0 {
                 error!("IMP_Encoder_PollingStream failed");
-                return false;
+                continue;
             }
 
             let mut stream = IMPEncoderStream {
@@ -187,8 +194,6 @@ unsafe fn get_h264_stream(
             );
 
             for pack in stream_packs {
-                let fps = REGULAR_FPS;
-
                 if pack.length > 0 {
                     let rem_size = stream.streamSize - pack.offset;
                     if rem_size < pack.length {

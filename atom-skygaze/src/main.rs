@@ -53,6 +53,7 @@ pub struct AppState {
     pub led_on: bool,
     pub irled_on: bool,
     pub flip: (bool, bool), // Horizontal, Vertical
+    pub fps: u32,           // 5,10,15,20,25
     pub brightness: u8,
     pub contrast: u8,
     pub sharpness: u8,
@@ -83,6 +84,7 @@ async fn main() {
                 led_on: true,
                 irled_on: false,
                 flip: (false, false),
+                fps: 25,
                 brightness: 128,
                 contrast: 128,
                 sharpness: 128,
@@ -161,6 +163,7 @@ async fn main() {
 
     let app_state_common_instance1 = app_state_common.clone();
     let app_state_common_instance2 = app_state_common.clone();
+    let app_state_common_instance3 = app_state_common.clone();
     let flag1 = shutdown_flag.clone();
     let flag2 = shutdown_flag.clone();
     let flag3 = shutdown_flag.clone();
@@ -183,7 +186,7 @@ async fn main() {
             })
             .unwrap();
 
-        mp4save_loops(detected_rx, flag2);
+        mp4save_loops(detected_rx, app_state_common_instance2, flag2);
 
         thread::Builder::new()
             .name("jpeg_loop".to_string())
@@ -195,7 +198,7 @@ async fn main() {
         thread::Builder::new()
             .name("led_loop".to_string())
             .spawn(move || {
-                start(app_state_common_instance2, detected_tx, logtx, flag4);
+                start(app_state_common_instance3, detected_tx, logtx, flag4);
             })
             .unwrap();
     };
