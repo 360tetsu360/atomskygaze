@@ -1,6 +1,7 @@
 use crate::config::save_to_file;
 use crate::config::NetworkConfig;
 use crate::gpio::*;
+use crate::system;
 use crate::AppState;
 use axum::extract::{
     ws::{Message, WebSocket},
@@ -11,14 +12,14 @@ use futures::SinkExt;
 use futures::StreamExt;
 use isvp_sys::*;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 
 type AppStateWs = State<(
     watch::Receiver<Vec<u8>>,
     Arc<Mutex<AppState>>,
     watch::Receiver<LogType>,
+    Arc<Mutex<bool>>,
 )>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -29,9 +30,9 @@ pub enum LogType {
 
 pub async fn handler(
     ws: WebSocketUpgrade,
-    State((rx, app_state, log_rx)): AppStateWs,
+    State((rx, app_state, log_rx, flag)): AppStateWs,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket: WebSocket| handle_socket(socket, rx, app_state, log_rx))
+    ws.on_upgrade(move |socket: WebSocket| handle_socket(socket, rx, app_state, log_rx, flag))
 }
 
 pub async fn handle_socket(
@@ -39,6 +40,7 @@ pub async fn handle_socket(
     mut rx: watch::Receiver<Vec<u8>>,
     app_state: Arc<Mutex<AppState>>,
     mut log_rx: watch::Receiver<LogType>,
+    flag: Arc<Mutex<bool>>,
 ) {
     let (mut sender, mut receiver) = socket.split();
     let app_state_json = serde_json::to_string(&(*app_state.lock().unwrap()).clone()).unwrap();
@@ -215,9 +217,8 @@ pub async fn handle_socket(
                             }
                         }
                         "reboot" => {
-                            unsafe {
-                                SU_Base_Reboot();
-                            }
+                            tokio::spawn(system::reboot(flag));
+                            break;
                         }
                         _ => {}
                     }
@@ -261,5 +262,6 @@ pub async fn handle_socket(
                 break;
             }
         }
+        _ = sender.close();
     });
 }

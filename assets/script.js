@@ -53,7 +53,8 @@ document.addEventListener("contextmenu", function(event) {
     event.preventDefault(); 
 });
 
-var connection = new WebSocket("/ws");
+const host = window.location.host;
+var connection = new WebSocket(`ws://${host}/ws`);
 
 connection.onopen = function(event) {
     console.log("Connected");
@@ -64,6 +65,7 @@ connection.onerror = function(error) {
 };
 
 var prev = document.getElementById("prev");
+var blob = null;
 connection.onmessage = function(event) {
     if (typeof event.data === 'string') {
         if (event.data === "") {
@@ -150,8 +152,11 @@ connection.onmessage = function(event) {
 
         }
       } else if (event.data instanceof Blob) {
+        if (blob) {
+            URL.revokeObjectURL(blob);
+        }
         const binaryData = event.data;
-        const blob = new Blob([binaryData], { type: 'image/jpeg' });
+        blob = new Blob([binaryData], { type: 'image/jpeg' });
         prev.src = URL.createObjectURL(blob);
       } else {
         console.log('Unknown message type');
@@ -243,17 +248,6 @@ document.getElementById("shrp").onclick= () => {
 
 document.getElementById("sat").onclick = () => {
     connection.send(`proc,sat,${document.getElementById("sat-range").value}`);
-}
-
-document.getElementById("save-netconf").onclick = () => {
-    let ap_mode = document.getElementById("apmode").checked;
-    let ssid = document.getElementById("ssid-input").value;
-    let psk = document.getElementById("psk-input").value;
-    if(!isValidPsk(psk)) {
-        window.alert("PSK is invalid.");
-        return;
-    }
-    connection.send(`netconf,${ap_mode?"on":"off"},${ssid},${psk}`);
 }
 
 document.getElementById("reboot").onclick = () => {

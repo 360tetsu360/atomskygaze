@@ -7,6 +7,8 @@ use std::sync::{Arc, Mutex};
 
 const TEXT_LENGTH: usize = 50;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+static mut FONT_HANDLE: i32 = 0;
+static mut GRP_NUM: i32 = 0;
 
 unsafe fn imp_osd_init(grp_num: ::std::os::raw::c_int) -> IMPRgnHandle {
     let font_handle: IMPRgnHandle = IMP_OSD_CreateRgn(std::ptr::null_mut());
@@ -77,6 +79,44 @@ unsafe fn imp_osd_init(grp_num: ::std::os::raw::c_int) -> IMPRgnHandle {
     font_handle
 }
 
+pub unsafe fn osd_exit() -> bool {
+    let mut osdcell = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_OSD,
+        groupID: GRP_NUM,
+        outputID: 0,
+    };
+
+    let mut fscell = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_FS,
+        groupID: 0,
+        outputID: 0,
+    };
+
+    if IMP_System_UnBind(&mut fscell, &mut osdcell) < 0 {
+        error!("IMP_System_UnBind error !");
+        return false;
+    }
+
+    if IMP_OSD_ShowRgn(FONT_HANDLE, GRP_NUM, 0) < 0 {
+        error!("IMP_OSD_ShowRgn() timeStamp error");
+        return false;
+    }
+
+    if IMP_OSD_UnRegisterRgn(FONT_HANDLE, GRP_NUM) < 0 {
+        error!("IMP_OSD_UnRegisterRgn() timeStamp error");
+        return false;
+    }
+
+    IMP_OSD_DestroyRgn(FONT_HANDLE);
+
+    if IMP_OSD_DestroyGroup(GRP_NUM) < 0 {
+        error!("IMP_OSD_DestroyGroup() timeStamp error");
+        return false;
+    }
+
+    true
+}
+
 pub unsafe fn imp_osd_bind() -> (::std::os::raw::c_int, IMPRgnHandle) {
     let grp_num = 0;
 
@@ -104,6 +144,9 @@ pub unsafe fn imp_osd_bind() -> (::std::os::raw::c_int, IMPRgnHandle) {
         panic!();
     }
 
+    FONT_HANDLE = font_handle;
+    GRP_NUM = grp_num;
+
     (grp_num, font_handle)
 }
 
@@ -124,6 +167,7 @@ pub unsafe fn imp_osd_start(
     grp_num: ::std::os::raw::c_int,
     font_handle: IMPRgnHandle,
     app_state: Arc<Mutex<AppState>>,
+    flag: Arc<Mutex<bool>>,
 ) {
     let mut timestamp_data = vec![0u8; TEXT_LENGTH * 14 * 14];
     let mut last_state = true;
@@ -134,8 +178,22 @@ pub unsafe fn imp_osd_start(
     }
 
     loop {
-        if last_state != app_state.lock().unwrap().timestamp {
-            if app_state.lock().unwrap().timestamp {
+        let shutdown_flag = match flag.lock() {
+            Ok(guard) => guard,
+            Err(_) => continue,
+        };
+
+        if *shutdown_flag {
+            break;
+        }
+        drop(shutdown_flag);
+
+        let app_state_tmp = match app_state.lock() {
+            Ok(guard) => guard,
+            Err(_) => continue,
+        };
+        if last_state != app_state_tmp.timestamp {
+            if app_state_tmp.timestamp {
                 if !imp_osd_show(grp_num, font_handle, 1) {
                     error!("OSD show error");
                     return;
@@ -145,9 +203,9 @@ pub unsafe fn imp_osd_start(
                 return;
             }
         }
-        last_state = app_state.lock().unwrap().timestamp;
+        last_state = app_state_tmp.timestamp;
 
-        if app_state.lock().unwrap().timestamp {
+        if app_state_tmp.timestamp {
             timestamp_data.fill(0);
             let now: DateTime<Utc> = Utc::now();
             let time: DateTime<FixedOffset> =
@@ -189,6 +247,7 @@ pub unsafe fn imp_osd_start(
             };
             IMP_OSD_UpdateRgnAttrData(font_handle, &mut data);
         }
+        drop(app_state_tmp);
 
         std::thread::sleep(std::time::Duration::from_millis(50));
     }

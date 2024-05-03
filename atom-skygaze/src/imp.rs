@@ -1,3 +1,4 @@
+use crate::osd;
 use crate::AppState;
 use isvp_sys::*;
 use log::error;
@@ -163,6 +164,15 @@ pub unsafe fn imp_init(app_state: AppState) -> bool {
         IMP_ISP_Tuning_SetISPVflip(IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE);
     }
 
+    true
+}
+
+pub unsafe fn imp_shutdown() -> bool {
+    imp_framesource_stop();
+    osd::osd_exit();
+    imp_encoder_exit();
+    imp_framesource_exit();
+    imp_exit();
     true
 }
 
@@ -411,6 +421,64 @@ pub unsafe fn imp_encoder_init() -> bool {
 
     if IMP_Encoder_RegisterChn(1, 1) < 0 {
         error!("IMP_Encoder_CreateChn failed");
+        return false;
+    }
+
+    true
+}
+
+pub unsafe fn imp_encoder_exit() -> bool {
+    let mut framesource_chn = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_FS,
+        groupID: 0,
+        outputID: 0,
+    };
+
+    let mut imp_encoder = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_ENC,
+        groupID: 0,
+        outputID: 0,
+    };
+
+    if IMP_System_UnBind(&mut framesource_chn, &mut imp_encoder) < 0 {
+        error!("hevc IMP_System_UnBind failed");
+        return false;
+    }
+
+    let mut framesource_chn = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_FS,
+        groupID: 1,
+        outputID: 0,
+    };
+
+    let mut imp_encoder = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_ENC,
+        groupID: 1,
+        outputID: 0,
+    };
+
+    if IMP_System_UnBind(&mut framesource_chn, &mut imp_encoder) < 0 {
+        error!("jpeg IMP_System_UnBind failed");
+        return false;
+    }
+
+    if IMP_Encoder_UnRegisterChn(0) < 0 {
+        error!("chn0 IMP_Encoder_UnRegisterChn failed");
+        return false;
+    }
+
+    if IMP_Encoder_DestroyChn(0) < 0 {
+        error!("chn0 IMP_Encoder_DestroyChn failed");
+        return false;
+    }
+
+    if IMP_Encoder_UnRegisterChn(1) < 0 {
+        error!("chn0 IMP_Encoder_UnRegisterChn failed");
+        return false;
+    }
+
+    if IMP_Encoder_DestroyChn(1) < 0 {
+        error!("chn0 IMP_Encoder_DestroyChn failed");
         return false;
     }
 

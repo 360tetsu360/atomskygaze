@@ -39,21 +39,6 @@ impl GPIOInterface {
         )
     }
 
-    pub fn active_low(&self) -> std::io::Result<u32> {
-        let ret = Self::read(&format!("/sys/class/gpio/gpio{}/active_low", self.number))?;
-        Ok(ret.parse().unwrap())
-    }
-
-    pub fn value(&self) -> std::io::Result<u32> {
-        let ret = Self::read(&format!("/sys/class/gpio/gpio{}/value", self.number))?;
-        Ok(ret.parse().unwrap())
-    }
-
-    fn read(path: &str) -> std::io::Result<String> {
-        let ret = fs::read_to_string(path)?;
-        Ok(ret)
-    }
-
     fn echo(path: &str, text: &str) -> std::io::Result<()> {
         let mut file = File::create(path)?;
         file.write_all(text.as_bytes())?;
@@ -151,47 +136,14 @@ pub enum LEDType {
 
 pub fn led_on(led: LEDType) -> std::io::Result<()> {
     match led {
-        LEDType::Orange => {
-            let active_low = GPIO_LED_ORANGE.active_low()?;
-            let value = match active_low {
-                0 => 1,
-                1 => 0,
-                _ => unreachable!(),
-            };
-            GPIO_LED_ORANGE.set_value(value)
-        },
-        LEDType::Blue => {
-            let active_low = GPIO_LED_BLUE.active_low()?;
-            let value = match active_low {
-                0 => 1,
-                1 => 0,
-                _ => unreachable!(),
-            };
-            GPIO_LED_BLUE.set_value(value)
-        },
+        LEDType::Orange => GPIO_LED_ORANGE.set_value(0),
+        LEDType::Blue => GPIO_LED_BLUE.set_value(0),
     }
 }
 
 pub fn led_off(led: LEDType) -> std::io::Result<()> {
     match led {
-        LEDType::Orange => {
-            let active_low = GPIO_LED_ORANGE.active_low()?;
-            let value = match active_low {
-                0 => 0,
-                1 => 1,
-                _ => unreachable!(),
-            };
-            GPIO_LED_ORANGE.set_value(value)
-        },
-        LEDType::Blue => {
-            let active_low = GPIO_LED_BLUE.active_low()?;
-            let value = match active_low {
-                0 => 0,
-                1 => 1,
-                _ => unreachable!(),
-            };
-
-            GPIO_LED_BLUE.set_value(value)
-        },
+        LEDType::Orange => GPIO_LED_ORANGE.set_value(1),
+        LEDType::Blue => GPIO_LED_BLUE.set_value(1),
     }
 }

@@ -8,19 +8,33 @@ use std::collections::VecDeque;
 use std::fs::File;
 use std::path::Path;
 use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 const REGULAR_FPS: u32 = 25;
 
-pub fn mp4save_loops(detected_rx: mpsc::Receiver<Option<DateTime<FixedOffset>>>) {
+pub fn mp4save_loops(
+    detected_rx: mpsc::Receiver<Option<DateTime<FixedOffset>>>,
+    flag: Arc<Mutex<bool>>,
+) {
     let (tx, rx) = mpsc::channel();
 
-    thread::spawn(move || unsafe { get_h264_stream(tx, detected_rx) });
+    thread::Builder::new()
+        .name("h264_loop".to_string())
+        .spawn(move || unsafe { get_h264_stream(tx, detected_rx, flag) })
+        .unwrap();
 
-    thread::spawn(move || sync_file(rx));
+    thread::Builder::new()
+        .name("filesave_loop".to_string())
+        .spawn(move || sync_file(rx))
+        .unwrap();
 }
 
-unsafe fn get_h264_stream(tx: mpsc::Sender<File>, detected_rx: mpsc::Receiver<Option<DateTime<FixedOffset>>>) -> bool {
+unsafe fn get_h264_stream(
+    tx: mpsc::Sender<File>,
+    detected_rx: mpsc::Receiver<Option<DateTime<FixedOffset>>>,
+    flag: Arc<Mutex<bool>>,
+) -> bool {
     let mut queue = VecDeque::<Vec<u8>>::new();
 
     let mut is_detecting = false;
@@ -32,6 +46,16 @@ unsafe fn get_h264_stream(tx: mpsc::Sender<File>, detected_rx: mpsc::Receiver<Op
     }
 
     loop {
+        let shutdown_flag = match flag.lock() {
+            Ok(guard) => guard,
+            Err(_) => continue,
+        };
+
+        if *shutdown_flag {
+            break true;
+        }
+        drop(shutdown_flag);
+
         let current_time = Local::now() + Duration::hours(9);
         let next_minute = current_time.minute() + 1;
 
@@ -82,6 +106,16 @@ unsafe fn get_h264_stream(tx: mpsc::Sender<File>, detected_rx: mpsc::Receiver<Op
         mp4muxer.init_video(1920, 1080, true, &mp4title);
 
         loop {
+            let shutdown_flag = match flag.lock() {
+                Ok(guard) => guard,
+                Err(_) => continue,
+            };
+
+            if *shutdown_flag {
+                break;
+            }
+            drop(shutdown_flag);
+
             if let Ok(det) = detected_rx.try_recv() {
                 if det.is_some() && !is_detecting {
                     let time = det.unwrap();
@@ -218,7 +252,7 @@ unsafe fn get_h264_stream(tx: mpsc::Sender<File>, detected_rx: mpsc::Receiver<Op
 }
 
 fn sync_file(rx: mpsc::Receiver<File>) {
-    for file in rx {
+    while let Ok(file) = rx.recv() {
         file.sync_all().unwrap();
         println!("Saved mp4");
     }
