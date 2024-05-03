@@ -1,6 +1,6 @@
 factory_t31_ZMC6tiIDQN
 rootfs_hack.ext2
 rootfs_hack.squashfs
-atom-skygaze.v*.zip
+atom-skygaze.v*.*.*.zip
 Cargo.lock
 target

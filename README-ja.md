@@ -3,10 +3,14 @@ ATOM Cam2で流星観測をするためのハックです。<br>
 [atomcam_tools](https://github.com/mnakada/atomcam_tools)、[meteor_detect](https://github.com/kin-hasegawa/meteor-detect)をもとにしたプロジェクトです。
 
 # WebUIサンプル
-|デフォルト|マスク編集画面|
-|---|---|
-|<img src="./images/sample.png" width=600px>|<img src="./images/sample-mask.png" width=600px>| 
+## デフォルト
+<img src="./images/sample.png" width=600px>
 
+## マスク編集画面
+<img src="./images/sample-mask.png" width=600px>
+
+## 検出動画
+<img src="./images/sample-detection.gif" width=600px>
 
 
 # 機能
@@ -34,6 +38,8 @@ ATOM Cam2で流星観測をするためのハックです。<br>
 # 使用方法
 ATOM Tech純正アプリで一度WiFiに接続したのち、factory_t31_ZMC6tiIDQNとrootfs_hack.squashfsを入れたMicroSDを挿入し起動。
 
+起動後、LEDランプが青・オレンジ色の点滅をしたら、[http://atomskygaze.local](http://atomskygaze.local)から設定画面に入れます。
+
 # ビルド
 [build-ja.md](./build-ja.md)をご覧ください。
 
@@ -49,6 +55,7 @@ Issue、Pull Requestなどご自由に立てていただいて構いません。
  - Buildroot: 2024.02
  - OpenCV4 + contrib
 
+検出アルゴリズムは[こちら](./algorithm.md)を参照してください。
 ## TODO
 - [ ] RAW画像保存
 - [ ] FITSファイル保存
