@@ -109,7 +109,6 @@ async fn main() {
                     psk: "".to_owned(),
                 }
             };
-            println!("a");
             save_atomconf(atomconf.clone()).await.unwrap();
             atomconf
         }
