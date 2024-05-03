@@ -1,15 +1,15 @@
-#![allow(dead_code)]
-#![feature(div_duration)]
-
 use crate::config::load_from_file;
 use crate::config::save_to_file;
 use crate::detection::*;
+use crate::download::download_file;
 use crate::gpio::*;
 use crate::imp::*;
 use crate::isp::log_all_value;
 use crate::osd::*;
 use crate::record::*;
 use crate::websocket::*;
+use crate::webstream::*;
+use crate::config::*;
 use axum::routing::get;
 use axum::Router;
 use serde::{Deserialize, Serialize};
@@ -20,18 +20,19 @@ use std::thread;
 use std::{net::SocketAddr, path::PathBuf};
 use tokio::sync::watch;
 use tower_http::services::ServeDir;
-use crate::download::download_file;
 
 mod config;
 mod detection;
+mod download;
 mod font;
 mod gpio;
 mod imp;
 mod isp;
 mod osd;
 mod record;
+mod system;
 mod websocket;
-mod download;
+mod webstream;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DetectionConfig {
@@ -53,6 +54,7 @@ pub struct AppState {
     pub led_on: bool,
     pub irled_on: bool,
     pub flip: (bool, bool), // Horizontal, Vertical
+    pub fps: u32,           // 5,10,15,20,25
     pub brightness: u8,
     pub contrast: u8,
     pub sharpness: u8,
@@ -83,6 +85,7 @@ async fn main() {
                 led_on: true,
                 irled_on: false,
                 flip: (false, false),
+                fps: 25,
                 brightness: 128,
                 contrast: 128,
                 sharpness: 128,
@@ -95,10 +98,29 @@ async fn main() {
     };
     let app_state_clone = app_state.clone();
 
+    let atom_config = match load_atomconf().await {
+        Ok(p) => p,
+        Err(_) => {
+            let atomconf = AtomConfig {
+                netconf: NetworkConfig {
+                    hostname: "atomskygaze".to_owned(),
+                    ap_mode: false,
+                    ssid: "".to_owned(),
+                    psk: "".to_owned(),
+                }
+            };
+            println!("a");
+            save_atomconf(atomconf.clone()).await.unwrap();
+            atomconf
+        }
+    };
+
     let (tx, rx) = watch::channel(vec![]);
     let (logtx, logrx) = watch::channel(LogType::None);
     let app_state_common = Arc::new(Mutex::new(app_state));
+    let atomconf_common = Arc::new(Mutex::new(atom_config));
     let (detected_tx, detected_rx) = mpsc::channel();
+    let shutdown_flag = Arc::new(Mutex::new(false));
 
     gpio_init().unwrap();
 
@@ -111,39 +133,61 @@ async fn main() {
     }
 
     let app_state_common_instance = app_state_common.clone();
-    thread::spawn(move || {
-        let mut blue_on = false;
-        loop {
-            let app_state = app_state_common_instance.lock().unwrap();
-            if app_state.led_on {
-                if !app_state.detect {
-                    if blue_on {
-                        led_off(LEDType::Blue).unwrap();
-                        led_on(LEDType::Orange).unwrap();
-                    } else {
-                        led_off(LEDType::Orange).unwrap();
-                        led_on(LEDType::Blue).unwrap();
-                    }
+    let flag = shutdown_flag.clone();
+    thread::Builder::new()
+        .name("led_loop".to_string())
+        .spawn(move || {
+            let mut blue_on = false;
+            loop {
+                let shutdown_flag = match flag.lock() {
+                    Ok(guard) => guard,
+                    Err(_) => continue,
+                };
 
-                    blue_on = !blue_on;
+                if *shutdown_flag {
+                    break;
+                }
+                drop(shutdown_flag);
+
+                let app_state = match app_state_common_instance.lock() {
+                    Ok(guard) => guard,
+                    Err(_) => continue,
+                };
+
+                if app_state.led_on {
+                    if !app_state.detect {
+                        if blue_on {
+                            led_off(LEDType::Blue).unwrap();
+                            led_on(LEDType::Orange).unwrap();
+                        } else {
+                            led_off(LEDType::Orange).unwrap();
+                            led_on(LEDType::Blue).unwrap();
+                        }
+
+                        blue_on = !blue_on;
+                    } else {
+                        led_on(LEDType::Blue).unwrap();
+                        led_off(LEDType::Orange).unwrap();
+                    }
                 } else {
-                    led_on(LEDType::Blue).unwrap();
+                    led_off(LEDType::Blue).unwrap();
                     led_off(LEDType::Orange).unwrap();
                 }
-            } else {
-                led_off(LEDType::Blue).unwrap();
-                led_off(LEDType::Orange).unwrap();
-            }
-            drop(app_state);
+                drop(app_state);
 
-            std::thread::sleep(std::time::Duration::from_millis(500));
-        }
-    });
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
+        })
+        .unwrap();
 
     let app_state_common_instance1 = app_state_common.clone();
     let app_state_common_instance2 = app_state_common.clone();
-
-    thread::spawn(|| unsafe {
+    let app_state_common_instance3 = app_state_common.clone();
+    let flag1 = shutdown_flag.clone();
+    let flag2 = shutdown_flag.clone();
+    let flag3 = shutdown_flag.clone();
+    let flag4 = shutdown_flag.clone();
+    unsafe {
         imp_init(app_state_clone);
         log_all_value();
         imp_framesource_init();
@@ -154,26 +198,38 @@ async fn main() {
         imp_framesource_start();
         init();
 
-        thread::spawn(move || {
-            imp_osd_start(grp_num, font_handle, app_state_common_instance1);
-        });
+        thread::Builder::new()
+            .name("osd_loop".to_string())
+            .spawn(move || {
+                imp_osd_start(grp_num, font_handle, app_state_common_instance1, flag1);
+            })
+            .unwrap();
 
-        mp4save_loops(detected_rx);
+        mp4save_loops(detected_rx, app_state_common_instance2, flag2);
 
-        thread::spawn(|| {
-            jpeg_start(tx);
-        });
+        thread::Builder::new()
+            .name("jpeg_loop".to_string())
+            .spawn(|| {
+                jpeg_start(tx, flag3);
+            })
+            .unwrap();
 
-        start(app_state_common_instance2, detected_tx, logtx);
-    });
+        thread::Builder::new()
+            .name("led_loop".to_string())
+            .spawn(move || {
+                start(app_state_common_instance3, detected_tx, logtx,  flag4);
+            })
+            .unwrap();
+    };
 
     let assets_dir = PathBuf::from("/media/mmc/assets/");
 
+    let flag = shutdown_flag.clone();
     let app = Router::new()
         .fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
         .route("/ws", get(handler))
         .route("/download", get(download_file))
-        .with_state((rx, app_state_common, logrx));
+        .with_state((rx, app_state_common, atomconf_common, logrx, flag));
 
     // run it with hyper
     let listener = tokio::net::TcpListener::bind("0.0.0.0:80").await.unwrap();

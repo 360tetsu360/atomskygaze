@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>ATOM skygaze</title>
+        <meta charset="utf-8">
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
+    </head>
+    <body>
+        <header>
+            ATOM-SKYGAZE v0.1.1
+        </header>
+        <dialog id="wifi-dialog" class="dialog">
+            <div class="control-panel">
+                <div class="one-line-title">
+                    ATOM Cam Settings
+                    <button id="wifi-dialog-close" class="dialog-close">X</button>
+                </div>
+            </div>
+            <div class="one-line-sub">
+                Reboot
+                <button id="reboot" class="button">Reboot</button>
+            </div>
+        </dialog>
+        <div class="left">
+            <div class="control-panel">
+                <div class="one-line-sub">
+                    ATOM Cam Settings
+                    <button id="wifi-settings" class="button">Open</button>
+                </div>
+            </div>
+            <div class="control-panel">
+                Mask
+                <div class="one-line-sub">
+                    Show
+                    <label class="toggle" for="shw_msk">
+                        <input type="checkbox" id="shw_msk">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="one-line-sub">
+                    Apply
+                    <button id="app-msk" class="button">Apply</button>
+                </div>
+            </div>
+            <div class="control-panel">
+                <div class="one-line">
+                    Meteor Detect
+                    <label class="toggle">
+                        <input type="checkbox" id="det">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="control-panel">
+                <div class="one-line">
+                    Timestamp
+                    <label class="toggle">
+                        <input type="checkbox" id="tstmp">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="control-panel">
+                <div class="one-line">
+                    Save Settings
+                    <button id="save-conf" class="button">Save</button>
+                </div>
+            </div>
+        </div> 
+        <hr class="separator">
+        <div class="preview">
+            <img id="prev" src="aaa.jpg">
+            <div class="grid-overlay" id="gridOverlay"></div>
+            <div class="log-title">Logs</div>
+            <div id="log-box">
+            </div>
+        </div> 
+        <div class="right">
+            <div class="control-panel">
+                <div class="one-line">
+                    Night Mode
+                    <label class="toggle">
+                        <input type="checkbox" id="night-mode">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="one-line">
+                    IRCUT
+                    <label class="toggle">
+                        <input type="checkbox" id="ircut">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="one-line">
+                    LED
+                    <label class="toggle">
+                        <input type="checkbox" id="led">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="one-line">
+                    IR-LED
+                    <label class="toggle">
+                        <input type="checkbox" id="irled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                Flip
+                <div class="one-line-sub">
+                    Horizontal
+                    <label class="toggle">
+                        <input type="checkbox" id="hflip">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="one-line-sub">
+                    Vertical
+                    <label class="toggle">
+                        <input type="checkbox" id="vflip">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                FPS
+                <div class="range-button-block">
+                    <input type="range" min="5" max="25" step="5" id="fps-range" class="slider-bar" />
+                    <p class="slide-value" id="fps-value">25</p>
+                    <button id="fps" class="button">Set</button>
+                </div>
+            </div>
+            
+            <div class="control-panel">
+                Image Processing
+                <div class="two-line-sub">
+                    Brigthness
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="255" id="brt-range" class="slider-bar" />
+                        <p class="slide-value" id="brt-value">128</p>
+                        <button id="brt" class="button">Set</button>
+                    </div>
+                </div>
+                <div class="two-line-sub">
+                    Contrast
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="255" id="cnt-range" class="slider-bar" />
+                        <p class="slide-value" id="cnt-value">128</p>
+                        <button id="cnt" class="button">Set</button>
+                    </div>
+                </div>
+                <div class="two-line-sub">
+                    Sharpness
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="255" id="shrp-range" class="slider-bar" />
+                        <p class="slide-value" id="shrp-value">128</p>
+                        <button id="shrp" class="button">Set</button>
+                    </div>
+                </div>
+                <div class="two-line-sub">
+                    Saturation
+                    <div class="range-button-block">
+                        <input type="range" min="0" max="255" id="sat-range" class="slider-bar" />
+                        <p class="slide-value" id="sat-value">128</p>
+                        <button id="sat" class="button">Set</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer>
+
+        </footer>
+        <script src="script.js"></script> 
+    </body>
+</html>

@@ -1,3 +1,4 @@
+use axum::response::IntoResponse;
 use axum::{
     body::Body,
     extract::Query,
@@ -5,10 +6,9 @@ use axum::{
     response::Response,
 };
 use serde::Deserialize;
+use std::path::PathBuf;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
-use axum::response::IntoResponse;
-use std::path::PathBuf;
 
 #[derive(Deserialize)]
 pub struct FileQuery {
@@ -34,11 +34,17 @@ pub async fn download_file(query: Query<FileQuery>) -> Result<Response<Body>, St
     let mut headers = HeaderMap::new();
     headers.insert(
         header::CONTENT_DISPOSITION,
-        format!("attachment; filename=\"{}\"", file_path.file_name().unwrap().to_str().unwrap())
-            .parse()
-            .unwrap(),
+        format!(
+            "attachment; filename=\"{}\"",
+            file_path.file_name().unwrap().to_str().unwrap()
+        )
+        .parse()
+        .unwrap(),
     );
-    headers.insert(header::CONTENT_TYPE, "application/octet-stream".parse().unwrap());
+    headers.insert(
+        header::CONTENT_TYPE,
+        "application/octet-stream".parse().unwrap(),
+    );
 
     Ok((headers, body).into_response())
 }

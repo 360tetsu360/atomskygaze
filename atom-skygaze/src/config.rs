@@ -15,6 +15,7 @@ pub struct AppConfig {
     pub led_on: bool,
     pub irled_on: bool,
     pub flip: (bool, bool), // Horizontal, Vertical
+    pub fps: u32,           // 5,10,15,20,25
     pub brightness: u8,
     pub contrast: u8,
     pub sharpness: u8,
@@ -32,6 +33,7 @@ pub async fn save_to_file(app_state: AppState) -> std::io::Result<()> {
         led_on: app_state.led_on,
         irled_on: app_state.irled_on,
         flip: app_state.flip,
+        fps: app_state.fps,
         brightness: app_state.brightness,
         contrast: app_state.contrast,
         sharpness: app_state.sharpness,
@@ -46,7 +48,8 @@ pub async fn save_to_file(app_state: AppState) -> std::io::Result<()> {
 
 pub async fn load_from_file() -> std::io::Result<AppState> {
     let content = tokio::fs::read_to_string("/media/mmc/config.toml").await?;
-    let app_config: AppConfig = toml::from_str(&content).unwrap();
+    let app_config: AppConfig = toml::from_str(&content)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
     Ok(AppState {
         mask: app_config.mask,
         detect: app_config.detect,
@@ -57,6 +60,7 @@ pub async fn load_from_file() -> std::io::Result<AppState> {
         led_on: app_config.led_on,
         irled_on: app_config.irled_on,
         flip: app_config.flip,
+        fps: app_config.fps,
         brightness: app_config.brightness,
         contrast: app_config.contrast,
         sharpness: app_config.sharpness,
@@ -66,21 +70,28 @@ pub async fn load_from_file() -> std::io::Result<AppState> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AtomConfig {
+    pub netconf: NetworkConfig,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NetworkConfig {
+    pub hostname: String,
     pub ap_mode: bool,
     pub ssid: String,
     pub psk: String,
 }
 
-pub async fn load_netconf() -> std::io::Result<NetworkConfig> {
-    let content = tokio::fs::read_to_string("/media/mmc/net_config.toml").await?;
-    let netconf: NetworkConfig = toml::from_str(&content).unwrap();
-    Ok(netconf)
+
+pub async fn load_atomconf() -> std::io::Result<AtomConfig> {
+    let content = tokio::fs::read_to_string("/media/mmc/atom_config.toml").await?;
+    let atomconf: AtomConfig = toml::from_str(&content).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+    Ok(atomconf)
 }
 
-pub async fn save_netconf(netconf: NetworkConfig) -> std::io::Result<()> {
-    let mut file = File::create("/media/mmc/net_config.toml").await?;
-    let toml = toml::to_string(&netconf).unwrap();
+pub async fn save_atomconf(atomconf: AtomConfig) -> std::io::Result<()> {
+    let mut file = File::create("/media/mmc/atom_config.toml").await?;
+    let toml = toml::to_string(&atomconf).unwrap();
     file.write_all(toml.as_bytes()).await?;
     file.sync_all().await
 }

@@ -1,8 +1,8 @@
-use crate::config::save_netconf;
 use crate::config::save_to_file;
-use crate::config::NetworkConfig;
 use crate::gpio::*;
+use crate::system;
 use crate::AppState;
+use crate::config::AtomConfig;
 use axum::extract::{
     ws::{Message, WebSocket},
     State, WebSocketUpgrade,
@@ -12,14 +12,15 @@ use futures::SinkExt;
 use futures::StreamExt;
 use isvp_sys::*;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 
 type AppStateWs = State<(
     watch::Receiver<Vec<u8>>,
     Arc<Mutex<AppState>>,
+    Arc<Mutex<AtomConfig>>,
     watch::Receiver<LogType>,
+    Arc<Mutex<bool>>,
 )>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -30,16 +31,18 @@ pub enum LogType {
 
 pub async fn handler(
     ws: WebSocketUpgrade,
-    State((rx, app_state, log_rx)): AppStateWs,
+    State((rx, app_state, atom_conf, log_rx, flag)): AppStateWs,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket: WebSocket| handle_socket(socket, rx, app_state, log_rx))
+    ws.on_upgrade(move |socket: WebSocket| handle_socket(socket, rx, app_state, atom_conf, log_rx, flag))
 }
 
 pub async fn handle_socket(
     socket: WebSocket,
     mut rx: watch::Receiver<Vec<u8>>,
     app_state: Arc<Mutex<AppState>>,
+    atom_conf: Arc<Mutex<AtomConfig>>,
     mut log_rx: watch::Receiver<LogType>,
+    flag: Arc<Mutex<bool>>,
 ) {
     let (mut sender, mut receiver) = socket.split();
     let app_state_json = serde_json::to_string(&(*app_state.lock().unwrap()).clone()).unwrap();
@@ -49,6 +52,16 @@ pub async fn handle_socket(
     ));
 
     if sender.send(app_state_message).await.is_err() {
+        return;
+    }
+
+    let atomconf_json = serde_json::to_string(&(*atom_conf.lock().unwrap()).clone()).unwrap();
+    let atomconf_message = Message::Text(format!(
+        "{{\"type\":\"atomconf\",\"payload\":{}}}",
+        atomconf_json
+    ));
+
+    if sender.send(atomconf_message).await.is_err() {
         return;
     }
 
@@ -145,6 +158,17 @@ pub async fn handle_socket(
                                 }
                             }
                         }
+                        "fps" => {
+                            if text.len() == 2 {
+                                let fps = text[1].parse().unwrap();
+                                if matches!(fps, 5 | 10 | 15 | 20 | 25) {
+                                    app_state.lock().unwrap().fps = fps;
+                                    unsafe {
+                                        IMP_ISP_Tuning_SetSensorFPS(fps, 1);
+                                    }
+                                }
+                            }
+                        }
                         "proc" => {
                             if text.len() == 3 {
                                 let v = text[2].parse().unwrap();
@@ -193,34 +217,31 @@ pub async fn handle_socket(
                             let app_state_clone = (*app_state.lock().unwrap()).clone();
                             tokio::spawn(save_to_file(app_state_clone));
                         }
-                        "netconf" => {
-                            println!("AAA");
-                            if text.len() == 4 {
-                                let mut netconf = NetworkConfig {
-                                    ap_mode: false,
-                                    ssid: "".to_string(),
-                                    psk: "".to_string(),
-                                };
-
-                                if text[1] == "on" {
-                                    netconf.ap_mode = true;
-                                } else if text[1] == "off" {
-                                    netconf.ap_mode = false;
-                                } else {
-                                    return;
-                                }
-
-                                netconf.ssid = text[2].to_string();
-                                netconf.psk = text[3].to_string();
-
-                                tokio::spawn(save_netconf(netconf));
-                            }
+                        "atomconf" => {
+                            //if text.len() == 4 {
+                            //    let mut netconf = NetworkConfig {
+                            //        ap_mode: false,
+                            //        ssid: "".to_string(),
+                            //        psk: "".to_string(),
+                            //    };
+//
+                            //    if text[1] == "on" {
+                            //        netconf.ap_mode = true;
+                            //    } else if text[1] == "off" {
+                            //        netconf.ap_mode = false;
+                            //    } else {
+                            //        return;
+                            //    }
+//
+                            //    netconf.ssid = text[2].to_string();
+                            //    netconf.psk = text[3].to_string();
+//
+                            //    //tokio::spawn(save_netconf(netconf));
+                            //}
                         }
                         "reboot" => {
-                            println!("AAA");
-                            unsafe {
-                                SU_Base_Reboot();
-                            }
+                            tokio::spawn(system::reboot(flag));
+                            break;
                         }
                         _ => {}
                     }
@@ -264,5 +285,6 @@ pub async fn handle_socket(
                 break;
             }
         }
+        _ = sender.close();
     });
 }

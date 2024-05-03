@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# set hostname
+#
+
+config_file="/media/mmc/atom_config.toml"
+get_value() {
+  grep "^$1" "$config_file" | awk -F ' = ' '{print $2}' | tr -d '"'
+}
+
+case "$1" in
+  start)
+    if [ -f "$config_file" ]; then
+        HOSTNAME=$(get_value "hostname")
+        cat > /configs/etc/hostname << EOF
+"$HOSTNAME"
+EOF
+    else
+        cat > /configs/etc/hostname << EOF
+atomskygaze
+EOF
+    fi
+
+    mount -o bind /configs/etc/hostname /etc/hostname
+	  hostname -F /configs/etc/hostname
+	;;
+  stop)
+    umount /etc/hostname
+	;;
+  restart|reload)
+	  "$0" stop
+	  "$0" start
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit $?

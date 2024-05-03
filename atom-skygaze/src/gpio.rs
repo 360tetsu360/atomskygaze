@@ -1,4 +1,3 @@
-use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -37,26 +36,6 @@ impl GPIOInterface {
             &format!("/sys/class/gpio/gpio{}/value", self.number),
             &value.to_string(),
         )
-    }
-
-    pub fn active_low(&self) -> std::io::Result<u32> {
-        let ret = Self::read(&format!("/sys/class/gpio/gpio{}/active_low", self.number))?;
-        Ok(ret.parse().unwrap())
-    }
-
-    pub fn value(&self) -> std::io::Result<u32> {
-        let ret = Self::read(&format!("/sys/class/gpio/gpio{}/value", self.number))?;
-        Ok(ret.parse().unwrap())
-    }
-
-    pub fn is_on(&self) -> std::io::Result<bool> {
-        let active_low = self.active_low()?;
-        Ok(self.value()? != active_low)
-    }
-
-    fn read(path: &str) -> std::io::Result<String> {
-        let ret = fs::read_to_string(path)?;
-        Ok(ret)
     }
 
     fn echo(path: &str, text: &str) -> std::io::Result<()> {
@@ -126,11 +105,6 @@ pub fn gpio_init() -> std::io::Result<()> {
     ircut_off()?;
 
     Ok(())
-}
-
-pub enum IRCUTStatus {
-    On,
-    Off,
 }
 
 pub fn ircut_on() -> std::io::Result<()> {

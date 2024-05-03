@@ -10,7 +10,7 @@
     </head>
     <body>
         <header>
-            ATOM-SKYGAZE v0.1.0
+            ATOM-SKYGAZE v0.1.1
         </header>
         <dialog id="wifi-dialog" class="dialog">
             <div class="control-panel">
@@ -19,7 +19,10 @@
                     <button id="wifi-dialog-close" class="dialog-close">X</button>
                 </div>
             </div>
-            Coming Soooon
+            <div class="one-line-sub">
+                Reboot
+                <button id="reboot" class="button">Reboot</button>
+            </div>
         </dialog>
         <div class="left">
             <div class="control-panel">
@@ -131,6 +134,15 @@
                         <input type="checkbox" id="vflip">
                         <span class="slider"></span>
                     </label>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                FPS
+                <div class="range-button-block">
+                    <input type="range" min="5" max="25" step="5" id="fps-range" class="slider-bar" />
+                    <p class="slide-value" id="fps-value">25</p>
+                    <button id="fps" class="button">Set</button>
                 </div>
             </div>
             

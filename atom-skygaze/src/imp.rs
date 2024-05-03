@@ -1,7 +1,7 @@
+use crate::osd;
 use crate::AppState;
 use isvp_sys::*;
 use log::error;
-use std::os::raw::c_void;
 use std::ptr::addr_of_mut;
 
 const SENSOR_NAME: &[u8] = b"gc2053";
@@ -164,6 +164,17 @@ pub unsafe fn imp_init(app_state: AppState) -> bool {
         IMP_ISP_Tuning_SetISPVflip(IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE);
     }
 
+    IMP_ISP_Tuning_SetSensorFPS(app_state.fps, 1);
+
+    true
+}
+
+pub unsafe fn imp_shutdown() -> bool {
+    imp_framesource_stop();
+    osd::osd_exit();
+    imp_encoder_exit();
+    imp_framesource_exit();
+    imp_exit();
     true
 }
 
@@ -418,6 +429,64 @@ pub unsafe fn imp_encoder_init() -> bool {
     true
 }
 
+pub unsafe fn imp_encoder_exit() -> bool {
+    let mut framesource_chn = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_FS,
+        groupID: 0,
+        outputID: 0,
+    };
+
+    let mut imp_encoder = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_ENC,
+        groupID: 0,
+        outputID: 0,
+    };
+
+    if IMP_System_UnBind(&mut framesource_chn, &mut imp_encoder) < 0 {
+        error!("hevc IMP_System_UnBind failed");
+        return false;
+    }
+
+    let mut framesource_chn = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_FS,
+        groupID: 1,
+        outputID: 0,
+    };
+
+    let mut imp_encoder = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_ENC,
+        groupID: 1,
+        outputID: 0,
+    };
+
+    if IMP_System_UnBind(&mut framesource_chn, &mut imp_encoder) < 0 {
+        error!("jpeg IMP_System_UnBind failed");
+        return false;
+    }
+
+    if IMP_Encoder_UnRegisterChn(0) < 0 {
+        error!("chn0 IMP_Encoder_UnRegisterChn failed");
+        return false;
+    }
+
+    if IMP_Encoder_DestroyChn(0) < 0 {
+        error!("chn0 IMP_Encoder_DestroyChn failed");
+        return false;
+    }
+
+    if IMP_Encoder_UnRegisterChn(1) < 0 {
+        error!("chn0 IMP_Encoder_UnRegisterChn failed");
+        return false;
+    }
+
+    if IMP_Encoder_DestroyChn(1) < 0 {
+        error!("chn0 IMP_Encoder_DestroyChn failed");
+        return false;
+    }
+
+    true
+}
+
 pub unsafe fn imp_jpeg_init() -> bool {
     let mut channel_attr = IMPEncoderChnAttr {
         encAttr: IMPEncoderEncAttr {
@@ -599,207 +668,4 @@ pub unsafe fn imp_avc_init() -> bool {
     }
 
     true
-}
-
-pub unsafe fn ivs_exalgo_init() -> bool {
-    if IMP_IVS_CreateGroup(0) < 0 {
-        error!("IMP_IVS_CreateGroup failed");
-        return false;
-    }
-
-    let mut ivs_cell = IMPCell {
-        deviceID: IMPDeviceID_DEV_ID_IVS,
-        groupID: 0,
-        outputID: 0,
-    };
-
-    let mut framesource_chn = IMPCell {
-        deviceID: IMPDeviceID_DEV_ID_FS,
-        groupID: 1,
-        outputID: 0,
-    };
-
-    let mut imp_encoder = IMPCell {
-        deviceID: IMPDeviceID_DEV_ID_ENC,
-        groupID: 1,
-        outputID: 0,
-    };
-
-    if IMP_System_Bind(&mut framesource_chn, &mut ivs_cell) < 0 {
-        error!("IMP_System_Bind failed");
-        return false;
-    }
-
-    if IMP_System_Bind(&mut ivs_cell, &mut imp_encoder) < 0 {
-        error!("IMP_System_Bind failed");
-        return false;
-    }
-
-    true
-}
-
-pub unsafe fn ivs_exalgo_exit() -> bool {
-    if IMP_IVS_DestroyGroup(0) < 0 {
-        error!("IMP_IVS_DestroyGroup failed");
-        return false;
-    }
-    true
-}
-
-pub unsafe fn ivs_exalgo_start(mut interface: IMPIVSInterface) -> bool {
-    if IMP_IVS_CreateChn(1, &mut interface) < 0 {
-        error!("IMP_IVS_CreateChn failed");
-        return false;
-    }
-
-    if IMP_IVS_RegisterChn(0, 1) < 0 {
-        error!("IMP_IVS_RegisterChn failed");
-        return false;
-    }
-
-    if IMP_IVS_StartRecvPic(1) < 0 {
-        error!("IMP_IVS_StartRecvPic failed");
-        return false;
-    }
-
-    true
-}
-
-pub unsafe fn ivs_exalgo_stop() -> bool {
-    if IMP_IVS_StopRecvPic(1) < 0 {
-        error!("IMP_IVS_StopRecvPic failed");
-        return false;
-    }
-
-    if IMP_IVS_UnRegisterChn(1) < 0 {
-        error!("IMP_IVS_UnRegisterChn failed");
-        return false;
-    }
-
-    if IMP_IVS_DestroyChn(1) < 0 {
-        error!("IMP_IVS_DestroyChn failed");
-        return false;
-    }
-
-    true
-}
-
-pub unsafe fn imp_ivs_init() -> bool {
-    if IMP_IVS_CreateGroup(0) < 0 {
-        error!("IMP_IVS_CreateGroup failed");
-        return false;
-    }
-
-    let mut ivs_cell = IMPCell {
-        deviceID: IMPDeviceID_DEV_ID_IVS,
-        groupID: 0,
-        outputID: 0,
-    };
-
-    let mut framesource_chn = IMPCell {
-        deviceID: IMPDeviceID_DEV_ID_FS,
-        groupID: 1,
-        outputID: 0,
-    };
-
-    let mut imp_encoder = IMPCell {
-        deviceID: IMPDeviceID_DEV_ID_ENC,
-        groupID: 1,
-        outputID: 0,
-    };
-
-    if IMP_System_Bind(&mut framesource_chn, &mut ivs_cell) < 0 {
-        error!("IMP_System_Bind failed");
-        return false;
-    }
-
-    if IMP_System_Bind(&mut ivs_cell, &mut imp_encoder) < 0 {
-        error!("IMP_System_Bind failed");
-        return false;
-    }
-
-    true
-}
-
-pub unsafe fn imp_ivs_move_start(interface: &mut *mut IMPIVSInterface) -> bool {
-    let mut param = IMP_IVS_MoveParam {
-        sense: [100; 52],
-        skipFrameCnt: 0,
-        frameInfo: IMPFrameInfo {
-            index: 0,
-            pool_idx: 0,
-            width: 640,
-            height: 360,
-            pixfmt: 0,
-            size: 0,
-            phyAddr: 0,
-            virAddr: 0,
-            timeStamp: 0,
-            rotate_osdflag: 0,
-            priv_: __IncompleteArrayField::<u32>::new(),
-        },
-        roiRect: [IMPRect {
-            p0: IMPPoint { x: 0, y: 0 },
-            p1: IMPPoint { x: 0, y: 0 },
-        }; 52],
-        roiRectCnt: 48,
-    };
-
-    for y in 0..6 {
-        for x in 0..8 {
-            param.roiRect[y * 6 + x].p0.x = (x * 80) as i32;
-            param.roiRect[y * 6 + x].p0.y = (y * 60) as i32;
-            param.roiRect[y * 6 + x].p1.x = ((x + 1) * 80) as i32 - 1;
-            param.roiRect[y * 6 + x].p1.y = ((y + 1) * 60) as i32 - 1;
-        }
-    }
-
-    *interface = IMP_IVS_CreateMoveInterface(&mut param);
-    if (*interface).is_null() {
-        error!("IMP_IVS_CreateMoveInterface failed");
-        return false;
-    }
-
-    if IMP_IVS_CreateChn(1, *interface) < 0 {
-        error!("IMP_IVS_CreateChn failed");
-        return false;
-    }
-
-    if IMP_IVS_RegisterChn(0, 1) < 0 {
-        error!("IMP_IVS_RegisterChn failed");
-        return false;
-    }
-
-    if IMP_IVS_StartRecvPic(1) < 0 {
-        error!("IMP_IVS_StartRecvPic failed");
-        return false;
-    }
-
-    true
-}
-
-pub unsafe fn imp_ivs_move_get_result_start() {}
-
-pub unsafe fn imp_ivs_move_get_result_process() {
-    let mut result: *mut IMP_IVS_MoveOutput = std::ptr::null_mut();
-    loop {
-        if IMP_IVS_PollingResult(1, IMP_IVS_DEFAULT_TIMEOUTMS) < 0 {
-            error!("IMP_IVS_PollingResult failed");
-        }
-
-        let result_ptr: *mut *mut IMP_IVS_MoveOutput = &mut result;
-        if IMP_IVS_GetResult(1, result_ptr as *mut *mut c_void) < 0 {
-            error!("IMP_IVS_GetResult failed");
-        }
-
-        for i in 0..48 {
-            if (*result).retRoi[i] == 1 {
-                println!("!!!");
-            }
-        }
-
-        if IMP_IVS_ReleaseResult(1, result as *mut c_void) < 0 {
-            error!("IMP_IVS_ReleaseResult failed");
-        }
-    }
 }

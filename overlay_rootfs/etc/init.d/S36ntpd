@@ -3,6 +3,19 @@
 # Start network time daemon
 #
 
+config_file="/media/mmc/atom_config.toml"
+get_value() {
+  grep "^$1" "$config_file" | awk -F ' = ' '{print $2}' | tr -d '"'
+}
+
+if [ -f "$config_file" ]; then
+  ap_mode=$(get_value "ap_mode")
+
+  if [[ "$ap_mode" == "true" ]]; then
+    exit $?
+  fi
+fi
+
 case "$1" in
   start)
     /usr/sbin/ntpd -q -g

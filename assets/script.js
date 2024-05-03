@@ -53,7 +53,8 @@ document.addEventListener("contextmenu", function(event) {
     event.preventDefault(); 
 });
 
-var connection = new WebSocket("/ws");
+const host = window.location.host;
+var connection = new WebSocket(`ws://${host}/ws`);
 
 connection.onopen = function(event) {
     console.log("Connected");
@@ -64,6 +65,7 @@ connection.onerror = function(error) {
 };
 
 var prev = document.getElementById("prev");
+var blob = null;
 connection.onmessage = function(event) {
     if (typeof event.data === 'string') {
         if (event.data === "") {
@@ -114,6 +116,8 @@ connection.onmessage = function(event) {
             document.getElementById("irled").checked = app_state.irled_on;
             document.getElementById("hflip").checked = app_state.flip[0];
             document.getElementById("vflip").checked = app_state.flip[1];
+            document.getElementById("fps-range").value = app_state.fps;
+            document.getElementById("fps-value").textContent = `${app_state.fps}`;
             document.getElementById("brt-range").value = app_state.brightness;
             document.getElementById("brt-value").textContent = `${app_state.brightness}`;
             document.getElementById("cnt-range").value = app_state.contrast;
@@ -150,8 +154,11 @@ connection.onmessage = function(event) {
 
         }
       } else if (event.data instanceof Blob) {
+        if (blob) {
+            URL.revokeObjectURL(blob);
+        }
         const binaryData = event.data;
-        const blob = new Blob([binaryData], { type: 'image/jpeg' });
+        blob = new Blob([binaryData], { type: 'image/jpeg' });
         prev.src = URL.createObjectURL(blob);
       } else {
         console.log('Unknown message type');
@@ -229,6 +236,10 @@ document.getElementById("vflip").onchange= () => {
     connection.send(`flip,v,${checked? "on":"off"}`);
 }
 
+document.getElementById("fps").onclick = () => {
+    connection.send(`fps,${document.getElementById("fps-range").value}`);
+}
+
 document.getElementById("brt").onclick= () => {
     connection.send(`proc,brt,${document.getElementById("brt-range").value}`);
 }
@@ -243,17 +254,6 @@ document.getElementById("shrp").onclick= () => {
 
 document.getElementById("sat").onclick = () => {
     connection.send(`proc,sat,${document.getElementById("sat-range").value}`);
-}
-
-document.getElementById("save-netconf").onclick = () => {
-    let ap_mode = document.getElementById("apmode").checked;
-    let ssid = document.getElementById("ssid-input").value;
-    let psk = document.getElementById("psk-input").value;
-    if(!isValidPsk(psk)) {
-        window.alert("PSK is invalid.");
-        return;
-    }
-    connection.send(`netconf,${ap_mode?"on":"off"},${ssid},${psk}`);
 }
 
 document.getElementById("reboot").onclick = () => {
@@ -275,6 +275,7 @@ function isValidPsk(psk) {
 
 const ranges = document.querySelectorAll('input[type="range"]');
 const paragraphs = {
+    "fps-range": document.getElementById("fps-value"),
     "brt-range": document.getElementById("brt-value"),
     "cnt-range": document.getElementById("cnt-value"),
     "shrp-range": document.getElementById("shrp-value"),
