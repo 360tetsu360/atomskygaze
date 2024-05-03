@@ -116,6 +116,8 @@ connection.onmessage = function(event) {
             document.getElementById("irled").checked = app_state.irled_on;
             document.getElementById("hflip").checked = app_state.flip[0];
             document.getElementById("vflip").checked = app_state.flip[1];
+            document.getElementById("fps-range").value = app_state.fps;
+            document.getElementById("fps-value").textContent = `${app_state.fps}`;
             document.getElementById("brt-range").value = app_state.brightness;
             document.getElementById("brt-value").textContent = `${app_state.brightness}`;
             document.getElementById("cnt-range").value = app_state.contrast;
@@ -234,6 +236,10 @@ document.getElementById("vflip").onchange= () => {
     connection.send(`flip,v,${checked? "on":"off"}`);
 }
 
+document.getElementById("fps").onclick = () => {
+    connection.send(`fps,${document.getElementById("fps-range").value}`);
+}
+
 document.getElementById("brt").onclick= () => {
     connection.send(`proc,brt,${document.getElementById("brt-range").value}`);
 }
@@ -269,6 +275,7 @@ function isValidPsk(psk) {
 
 const ranges = document.querySelectorAll('input[type="range"]');
 const paragraphs = {
+    "fps-range": document.getElementById("fps-value"),
     "brt-range": document.getElementById("brt-value"),
     "cnt-range": document.getElementById("cnt-value"),
     "shrp-range": document.getElementById("shrp-value"),

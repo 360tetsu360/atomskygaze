@@ -164,6 +164,8 @@ pub unsafe fn imp_init(app_state: AppState) -> bool {
         IMP_ISP_Tuning_SetISPVflip(IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE);
     }
 
+    IMP_ISP_Tuning_SetSensorFPS(app_state.fps, 1);
+
     true
 }
 

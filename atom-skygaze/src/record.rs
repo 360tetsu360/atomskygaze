@@ -246,7 +246,8 @@ unsafe fn get_h264_stream(
                 return false;
             }
 
-            if queue.len() > 51 {
+
+            while queue.len() > 51 {
                 queue.pop_front();
             }
         }

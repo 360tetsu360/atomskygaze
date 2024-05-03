@@ -71,20 +71,21 @@ pub async fn load_from_file() -> std::io::Result<AppState> {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AtomConfig {
-    netconf: NetworkConfig,
+    pub netconf: NetworkConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NetworkConfig {
+    pub hostname: String,
     pub ap_mode: bool,
     pub ssid: String,
     pub psk: String,
 }
 
-/*
+
 pub async fn load_atomconf() -> std::io::Result<AtomConfig> {
     let content = tokio::fs::read_to_string("/media/mmc/atom_config.toml").await?;
-    let atomconf: AtomConfig = toml::from_str(&content).unwrap();
+    let atomconf: AtomConfig = toml::from_str(&content).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
     Ok(atomconf)
 }
 
@@ -94,4 +95,3 @@ pub async fn save_atomconf(atomconf: AtomConfig) -> std::io::Result<()> {
     file.write_all(toml.as_bytes()).await?;
     file.sync_all().await
 }
-*/

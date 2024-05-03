@@ -9,6 +9,7 @@ use crate::osd::*;
 use crate::record::*;
 use crate::websocket::*;
 use crate::webstream::*;
+use crate::config::*;
 use axum::routing::get;
 use axum::Router;
 use serde::{Deserialize, Serialize};
@@ -97,9 +98,27 @@ async fn main() {
     };
     let app_state_clone = app_state.clone();
 
+    let atom_config = match load_atomconf().await {
+        Ok(p) => p,
+        Err(_) => {
+            let atomconf = AtomConfig {
+                netconf: NetworkConfig {
+                    hostname: "atomskygaze".to_owned(),
+                    ap_mode: false,
+                    ssid: "".to_owned(),
+                    psk: "".to_owned(),
+                }
+            };
+            println!("a");
+            save_atomconf(atomconf.clone()).await.unwrap();
+            atomconf
+        }
+    };
+
     let (tx, rx) = watch::channel(vec![]);
     let (logtx, logrx) = watch::channel(LogType::None);
     let app_state_common = Arc::new(Mutex::new(app_state));
+    let atomconf_common = Arc::new(Mutex::new(atom_config));
     let (detected_tx, detected_rx) = mpsc::channel();
     let shutdown_flag = Arc::new(Mutex::new(false));
 
@@ -198,7 +217,7 @@ async fn main() {
         thread::Builder::new()
             .name("led_loop".to_string())
             .spawn(move || {
-                start(app_state_common_instance3, detected_tx, logtx, flag4);
+                start(app_state_common_instance3, detected_tx, logtx,  flag4);
             })
             .unwrap();
     };
@@ -210,7 +229,7 @@ async fn main() {
         .fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
         .route("/ws", get(handler))
         .route("/download", get(download_file))
-        .with_state((rx, app_state_common, logrx, flag));
+        .with_state((rx, app_state_common, atomconf_common, logrx, flag));
 
     // run it with hyper
     let listener = tokio::net::TcpListener::bind("0.0.0.0:80").await.unwrap();
