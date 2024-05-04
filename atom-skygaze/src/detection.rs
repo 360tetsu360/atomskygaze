@@ -254,7 +254,7 @@ pub unsafe fn start(
 
             diff_list.push_back(diff);
 
-            if diff_list.len() == (app_state_tmp.fps / 5) as usize {
+            if diff_list.len() > (app_state_tmp.fps / 5) as usize {
                 let mut diff_buff = composite(&mut diff_list);
                 let integrated_diff = Mat::new_rows_cols_with_data_def(
                     img_height as i32,

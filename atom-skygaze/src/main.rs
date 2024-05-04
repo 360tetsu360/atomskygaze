@@ -1,5 +1,6 @@
 use crate::config::load_from_file;
 use crate::config::save_to_file;
+use crate::config::*;
 use crate::detection::*;
 use crate::download::download_file;
 use crate::gpio::*;
@@ -9,7 +10,6 @@ use crate::osd::*;
 use crate::record::*;
 use crate::websocket::*;
 use crate::webstream::*;
-use crate::config::*;
 use axum::routing::get;
 use axum::Router;
 use serde::{Deserialize, Serialize};
@@ -107,7 +107,7 @@ async fn main() {
                     ap_mode: false,
                     ssid: "".to_owned(),
                     psk: "".to_owned(),
-                }
+                },
             };
             save_atomconf(atomconf.clone()).await.unwrap();
             atomconf
@@ -155,6 +155,7 @@ async fn main() {
 
                 if app_state.led_on {
                     if !app_state.detect {
+                        drop(app_state);
                         if blue_on {
                             led_off(LEDType::Blue).unwrap();
                             led_on(LEDType::Orange).unwrap();
@@ -165,14 +166,15 @@ async fn main() {
 
                         blue_on = !blue_on;
                     } else {
+                        drop(app_state);
                         led_on(LEDType::Blue).unwrap();
                         led_off(LEDType::Orange).unwrap();
                     }
                 } else {
+                    drop(app_state);
                     led_off(LEDType::Blue).unwrap();
                     led_off(LEDType::Orange).unwrap();
                 }
-                drop(app_state);
 
                 std::thread::sleep(std::time::Duration::from_millis(500));
             }
@@ -216,7 +218,7 @@ async fn main() {
         thread::Builder::new()
             .name("led_loop".to_string())
             .spawn(move || {
-                start(app_state_common_instance3, detected_tx, logtx,  flag4);
+                start(app_state_common_instance3, detected_tx, logtx, flag4);
             })
             .unwrap();
     };

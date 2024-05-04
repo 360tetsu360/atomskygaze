@@ -1,8 +1,8 @@
 use crate::config::save_to_file;
+use crate::config::AtomConfig;
 use crate::gpio::*;
 use crate::system;
 use crate::AppState;
-use crate::config::AtomConfig;
 use axum::extract::{
     ws::{Message, WebSocket},
     State, WebSocketUpgrade,
@@ -33,7 +33,9 @@ pub async fn handler(
     ws: WebSocketUpgrade,
     State((rx, app_state, atom_conf, log_rx, flag)): AppStateWs,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket: WebSocket| handle_socket(socket, rx, app_state, atom_conf, log_rx, flag))
+    ws.on_upgrade(move |socket: WebSocket| {
+        handle_socket(socket, rx, app_state, atom_conf, log_rx, flag)
+    })
 }
 
 pub async fn handle_socket(
@@ -45,21 +47,43 @@ pub async fn handle_socket(
     flag: Arc<Mutex<bool>>,
 ) {
     let (mut sender, mut receiver) = socket.split();
-    let app_state_json = serde_json::to_string(&(*app_state.lock().unwrap()).clone()).unwrap();
-    let app_state_message = Message::Text(format!(
-        "{{\"type\":\"appstate\",\"payload\":{}}}",
-        app_state_json
-    ));
+
+    // To avoid deadlock.
+    let app_state_message = {
+        let app_state_tmp = match app_state.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                _ = sender.close();
+                return;
+            }
+        };
+        let app_state_json = serde_json::to_string(&app_state_tmp.clone()).unwrap();
+        drop(app_state_tmp);
+        Message::Text(format!(
+            "{{\"type\":\"appstate\",\"payload\":{}}}",
+            app_state_json
+        ))
+    };
 
     if sender.send(app_state_message).await.is_err() {
         return;
     }
 
-    let atomconf_json = serde_json::to_string(&(*atom_conf.lock().unwrap()).clone()).unwrap();
-    let atomconf_message = Message::Text(format!(
-        "{{\"type\":\"atomconf\",\"payload\":{}}}",
-        atomconf_json
-    ));
+    let atomconf_message = {
+        let atom_conf_tmp = match atom_conf.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                _ = sender.close();
+                return;
+            }
+        };
+        let atomconf_json = serde_json::to_string(&atom_conf_tmp.clone()).unwrap();
+        drop(atom_conf_tmp);
+        Message::Text(format!(
+            "{{\"type\":\"atomconf\",\"payload\":{}}}",
+            atomconf_json
+        ))
+    };
 
     if sender.send(atomconf_message).await.is_err() {
         return;
@@ -67,6 +91,10 @@ pub async fn handle_socket(
 
     tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
+            let mut app_state_tmp = match app_state.lock() {
+                Ok(guard) => guard,
+                Err(_) => continue,
+            };
             match msg {
                 Message::Text(texta) => {
                     let text: Vec<&str> = texta.split(',').collect();
@@ -74,50 +102,58 @@ pub async fn handle_socket(
                         "mode" => {
                             if text.len() == 2 {
                                 if text[1] == "day" {
+                                    app_state_tmp.night_mode = false;
+                                    drop(app_state_tmp);
                                     unsafe {
                                         IMP_ISP_Tuning_SetISPRunningMode(
                                             IMPISPRunningMode_IMPISP_RUNNING_MODE_DAY,
                                         );
                                     }
-                                    app_state.lock().unwrap().night_mode = false;
                                 } else if text[1] == "night" {
+                                    app_state_tmp.night_mode = true;
+                                    drop(app_state_tmp);
                                     unsafe {
                                         IMP_ISP_Tuning_SetISPRunningMode(
                                             IMPISPRunningMode_IMPISP_RUNNING_MODE_NIGHT,
                                         );
                                     }
-                                    app_state.lock().unwrap().night_mode = true;
                                 }
                             }
                         }
                         "ir" => {
                             if text.len() == 2 {
                                 if text[1] == "on" {
+                                    app_state_tmp.ircut_on = true;
+                                    drop(app_state_tmp);
                                     ircut_on().unwrap();
-                                    app_state.lock().unwrap().ircut_on = true;
                                 } else if text[1] == "off" {
+                                    app_state_tmp.ircut_on = false;
+                                    drop(app_state_tmp);
                                     ircut_off().unwrap();
-                                    app_state.lock().unwrap().ircut_on = false;
                                 }
                             }
                         }
                         "led" => {
                             if text.len() == 2 {
                                 if text[1] == "on" {
-                                    app_state.lock().unwrap().led_on = true;
+                                    app_state_tmp.led_on = true;
+                                    drop(app_state_tmp);
                                 } else if text[1] == "off" {
-                                    app_state.lock().unwrap().led_on = false;
+                                    app_state_tmp.led_on = false;
+                                    drop(app_state_tmp);
                                 }
                             }
                         }
                         "irled" => {
                             if text.len() == 2 {
                                 if text[1] == "on" {
+                                    app_state_tmp.irled_on = true;
+                                    drop(app_state_tmp);
                                     irled_on().unwrap();
-                                    app_state.lock().unwrap().irled_on = true;
                                 } else if text[1] == "off" {
+                                    app_state_tmp.irled_on = false;
+                                    drop(app_state_tmp);
                                     irled_off().unwrap();
-                                    app_state.lock().unwrap().irled_on = false;
                                 }
                             }
                         }
@@ -125,35 +161,39 @@ pub async fn handle_socket(
                             if text.len() == 3 {
                                 if text[1] == "h" {
                                     if text[2] == "on" {
+                                        app_state_tmp.flip.0 = true;
+                                        drop(app_state_tmp);
                                         unsafe {
                                             IMP_ISP_Tuning_SetISPHflip(
                                                 IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE,
                                             );
                                         }
-                                        app_state.lock().unwrap().flip.0 = true;
                                     } else if text[2] == "off" {
+                                        app_state_tmp.flip.0 = false;
+                                        drop(app_state_tmp);
                                         unsafe {
                                             IMP_ISP_Tuning_SetISPHflip(
                                                 IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE,
                                             );
                                         }
-                                        app_state.lock().unwrap().flip.0 = false;
                                     }
                                 } else if text[1] == "v" {
                                     if text[2] == "on" {
+                                        app_state_tmp.flip.1 = true;
+                                        drop(app_state_tmp);
                                         unsafe {
                                             IMP_ISP_Tuning_SetISPVflip(
                                                 IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_ENABLE,
                                             );
                                         }
-                                        app_state.lock().unwrap().flip.1 = true;
                                     } else if text[2] == "off" {
+                                        app_state_tmp.flip.1 = false;
+                                        drop(app_state_tmp);
                                         unsafe {
                                             IMP_ISP_Tuning_SetISPVflip(
                                                 IMPISPTuningOpsMode_IMPISP_TUNING_OPS_MODE_DISABLE,
                                             );
                                         }
-                                        app_state.lock().unwrap().flip.1 = false;
                                     }
                                 }
                             }
@@ -162,7 +202,8 @@ pub async fn handle_socket(
                             if text.len() == 2 {
                                 let fps = text[1].parse().unwrap();
                                 if matches!(fps, 5 | 10 | 15 | 20 | 25) {
-                                    app_state.lock().unwrap().fps = fps;
+                                    app_state_tmp.fps = fps;
+                                    drop(app_state_tmp);
                                     unsafe {
                                         IMP_ISP_Tuning_SetSensorFPS(fps, 1);
                                     }
@@ -175,20 +216,24 @@ pub async fn handle_socket(
                                 unsafe {
                                     match text[1] {
                                         "sat" => {
+                                            app_state_tmp.saturation = v;
+                                            drop(app_state_tmp);
                                             IMP_ISP_Tuning_SetSaturation(v);
-                                            app_state.lock().unwrap().saturation = v;
                                         }
                                         "brt" => {
+                                            app_state_tmp.brightness = v;
+                                            drop(app_state_tmp);
                                             IMP_ISP_Tuning_SetBrightness(v);
-                                            app_state.lock().unwrap().brightness = v;
                                         }
                                         "cnt" => {
+                                            app_state_tmp.contrast = v;
+                                            drop(app_state_tmp);
                                             IMP_ISP_Tuning_SetContrast(v);
-                                            app_state.lock().unwrap().contrast = v;
                                         }
                                         "shrp" => {
+                                            app_state_tmp.sharpness = v;
+                                            drop(app_state_tmp);
                                             IMP_ISP_Tuning_SetSharpness(v);
-                                            app_state.lock().unwrap().sharpness = v;
                                         }
                                         _ => {}
                                     }
@@ -198,47 +243,31 @@ pub async fn handle_socket(
                         "det" => {
                             if text.len() == 2 {
                                 if text[1] == "on" {
-                                    app_state.lock().unwrap().detect = true;
+                                    app_state_tmp.detect = true;
+                                    drop(app_state_tmp);
                                 } else if text[1] == "off" {
-                                    app_state.lock().unwrap().detect = false;
+                                    app_state_tmp.detect = false;
+                                    drop(app_state_tmp);
                                 }
                             }
                         }
                         "tstmp" => {
                             if text.len() == 2 {
                                 if text[1] == "on" {
-                                    app_state.lock().unwrap().timestamp = true;
+                                    app_state_tmp.timestamp = true;
+                                    drop(app_state_tmp);
                                 } else if text[1] == "off" {
-                                    app_state.lock().unwrap().timestamp = false;
+                                    app_state_tmp.timestamp = false;
+                                    drop(app_state_tmp);
                                 }
                             }
                         }
                         "save" => {
-                            let app_state_clone = (*app_state.lock().unwrap()).clone();
+                            let app_state_clone = app_state_tmp.clone();
+                            drop(app_state_tmp);
                             tokio::spawn(save_to_file(app_state_clone));
                         }
-                        "atomconf" => {
-                            //if text.len() == 4 {
-                            //    let mut netconf = NetworkConfig {
-                            //        ap_mode: false,
-                            //        ssid: "".to_string(),
-                            //        psk: "".to_string(),
-                            //    };
-//
-                            //    if text[1] == "on" {
-                            //        netconf.ap_mode = true;
-                            //    } else if text[1] == "off" {
-                            //        netconf.ap_mode = false;
-                            //    } else {
-                            //        return;
-                            //    }
-//
-                            //    netconf.ssid = text[2].to_string();
-                            //    netconf.psk = text[3].to_string();
-//
-                            //    //tokio::spawn(save_netconf(netconf));
-                            //}
-                        }
+                        "atomconf" => {}
                         "reboot" => {
                             tokio::spawn(system::reboot(flag));
                             break;
@@ -247,7 +276,8 @@ pub async fn handle_socket(
                     }
                 }
                 Message::Binary(buffer) => {
-                    app_state.lock().unwrap().mask = buffer;
+                    app_state_tmp.mask = buffer;
+                    drop(app_state_tmp);
                 }
                 Message::Close(_) => break,
                 _ => (),

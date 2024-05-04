@@ -82,10 +82,10 @@ pub struct NetworkConfig {
     pub psk: String,
 }
 
-
 pub async fn load_atomconf() -> std::io::Result<AtomConfig> {
     let content = tokio::fs::read_to_string("/media/mmc/atom_config.toml").await?;
-    let atomconf: AtomConfig = toml::from_str(&content).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+    let atomconf: AtomConfig = toml::from_str(&content)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
     Ok(atomconf)
 }
 
