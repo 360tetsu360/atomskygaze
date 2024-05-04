@@ -24,6 +24,21 @@
                 <button id="reboot" class="button">Reboot</button>
             </div>
         </dialog>
+        <dialog id="video-dialog" class="dialog">
+            <div class="control-panel">
+                <div class="one-line-title">
+                    <p id="video-dialog-title"></p>
+                    <button id="video-dialog-close" class="dialog-close">X</button>
+                </div>
+            </div>
+            <video controls id="videoframe" style="width: 960px;" preload="none"></video>
+            <div class="control-panel">
+                <div class="one-line-sub">
+                    Download
+                    <a id="download" class="button">Download</a>
+                </div>
+            </div>
+        </dialog>
         <div class="left">
             <div class="control-panel">
                 <div class="one-line-sub">
@@ -43,6 +58,10 @@
                 <div class="one-line-sub">
                     Apply
                     <button id="app-msk" class="button">Apply</button>
+                </div>
+                <div class="one-line-sub">
+                    Clear
+                    <button id="clear-msk" class="button">Clear</button>
                 </div>
             </div>
             <div class="control-panel">

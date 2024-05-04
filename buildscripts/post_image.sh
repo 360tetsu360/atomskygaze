@@ -12,5 +12,7 @@ cp -r /src/assets /src/output
 cd /src/output
 VERSION=$(cat /src/configs/skygaze.ver)
 ZIP_NAME="/src/atom-skygaze.v$VERSION.zip"
-rm "$ZIP_NAME"
+if [ -f $ZIP_NAME ]; then
+    rm "$ZIP_NAME"
+fi
 zip -r "$ZIP_NAME" .
