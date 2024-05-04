@@ -48,3 +48,28 @@ pub async fn download_file(query: Query<FileQuery>) -> Result<Response<Body>, St
 
     Ok((headers, body).into_response())
 }
+
+pub async fn view_file(query: Query<FileQuery>) -> Result<Response<Body>, StatusCode> {
+    let filename = &query.filename;
+    let file_path = PathBuf::from(format!("/media/mmc/records/detected/{}", filename));
+
+    if !file_path.exists() {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    let file = File::open(&file_path)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let stream = ReaderStream::new(file);
+    let body = Body::from_stream(stream);
+
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::CONTENT_TYPE,
+        "video/mp4".parse().unwrap(),
+    );
+    headers.insert("Accept-Ranges", "bytes".parse().unwrap());
+
+    Ok((headers, body).into_response())
+}

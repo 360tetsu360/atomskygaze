@@ -85,11 +85,15 @@ connection.onmessage = function(event) {
             var oneline = document.createElement("div");
             oneline.className = "one-line";
             oneline.textContent = `[${timestamp}] Meteor Detected`;
-            var download = document.createElement("a");
-            download.href = `/download?filename=${record_path}`;
-            download.textContent = "Download";
-            oneline.appendChild(download);
+
             new_item.appendChild(oneline);
+            new_item.onclick = () => {
+                document.getElementById("video-dialog-title").textContent = `[${timestamp}] Meteor Detected`;
+                document.getElementById("videoframe").src = `/view?filename=${record_path}`;
+                document.getElementById("download").href = `/download?filename=${record_path}`;
+                const dialog = document.getElementById("video-dialog");
+                dialog.showModal();
+            };
 
             if (log_box.firstChild) {
                 log_box.insertBefore(new_item, log_box.firstChild);
@@ -139,11 +143,14 @@ connection.onmessage = function(event) {
                 var oneline = document.createElement("div");
                 oneline.className = "one-line";
                 oneline.textContent = `[${timestamp}] Meteor Detected`;
-                var download = document.createElement("a");
-                download.href = `/download?filename=${record_path}`;
-                download.textContent = "Download";
-                oneline.appendChild(download);
                 new_item.appendChild(oneline);
+                new_item.onclick = () => {
+                    document.getElementById("video-dialog-title").textContent = `[${timestamp}] Meteor Detected`;
+                    document.getElementById("videoframe").src = `/view?filename=${record_path}`;
+                    document.getElementById("download").href = `/download?filename=${record_path}`;
+                    const dialog = document.getElementById("video-dialog");
+                    dialog.showModal();
+                };
     
                 if (log_box.firstChild) {
                     log_box.insertBefore(new_item, log_box.firstChild);
@@ -180,6 +187,11 @@ document.getElementById("wifi-dialog-close").onclick = () => {
     dialog.close();
 }
 
+document.getElementById("video-dialog-close").onclick = () => {
+    const dialog = document.getElementById("video-dialog");
+    dialog.close();
+}
+
 document.getElementById("shw_msk").onchange = () => {
     let checked = document.getElementById("shw_msk").checked; 
     var elements = document.getElementsByClassName("grid-item");
@@ -190,6 +202,18 @@ document.getElementById("shw_msk").onchange = () => {
 
 document.getElementById("app-msk").onclick = () => {
     connection.send(grid_state.buffer);
+}
+
+document.getElementById("clear-msk").onclick = () => {
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < columns; col++) {
+            if (grid_state[row * columns + col] === 1) {
+                let grid = document.getElementById(`grid-${row}-${col}`);
+                grid.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
+                grid_state[row * columns + col] = 0;
+            }
+        }
+    }
 }
 
 document.getElementById("det").onchange= () => {

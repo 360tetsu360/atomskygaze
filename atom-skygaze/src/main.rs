@@ -20,6 +20,7 @@ use std::thread;
 use std::{net::SocketAddr, path::PathBuf};
 use tokio::sync::watch;
 use tower_http::services::ServeDir;
+use crate::download::view_file;
 
 mod config;
 mod detection;
@@ -230,6 +231,7 @@ async fn main() {
         .fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
         .route("/ws", get(handler))
         .route("/download", get(download_file))
+        .route("/view", get(view_file))
         .with_state((rx, app_state_common, atomconf_common, logrx, flag));
 
     // run it with hyper
