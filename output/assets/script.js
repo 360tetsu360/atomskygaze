@@ -53,6 +53,7 @@ document.addEventListener("contextmenu", function(event) {
     event.preventDefault(); 
 });
 
+var atom_time = null;
 const host = window.location.host;
 var connection = new WebSocket(`ws://${host}/ws`);
 
@@ -74,7 +75,9 @@ connection.onmessage = function(event) {
 
         const packet = JSON.parse(event.data);
 
-        if (packet.type === "detected") {
+        if (packet.type === "time") {
+            atom_time = packet.payload;
+        } else if (packet.type === "detected") {
             const timestamp = packet.payload.timestamp;
             const record_path = packet.payload.saved_file;
             var log_box = document.getElementById("log-box");
@@ -176,6 +179,37 @@ connection.onmessage = function(event) {
 connection.onclose = function() {
     console.log("Close");
 };
+
+const yyyymmdd = new Intl.DateTimeFormat(
+    undefined,
+    {
+      year:   'numeric',
+      month:  '2-digit',
+      day:    '2-digit',
+      hour:   '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }
+  )
+
+function update_time() {
+    if(atom_time) {
+        var cam_time = new Date(Number(atom_time.time) + 500);
+        document.getElementById("atom-time").innerHTML = yyyymmdd.format(cam_time);
+    }
+    var dev_time = new Date();
+    document.getElementById("dev-time").innerHTML = yyyymmdd.format(dev_time);
+    connection.send("time");
+}
+setInterval('update_time()',500);
+
+document.getElementById("sync").onclick = () => {
+    var now = (new Date().valueOf() / 1000).toFixed(2);
+    const secs = Math.floor(now);
+    const millis = Math.floor((now - secs) * 1000);
+    console.log(`sync,${secs},${millis}`);
+    connection.send(`sync,${secs},${millis}`);
+}
 
 document.getElementById("wifi-settings").onclick = () => {
     const dialog = document.getElementById("wifi-dialog");
@@ -284,6 +318,16 @@ document.getElementById("reboot").onclick = () => {
     connection.send("reboot");
 }
 
+document.getElementById("det-settings").onclick = () => {
+    const dialog = document.getElementById("detection-dialog");
+    dialog.showModal();
+}
+
+document.getElementById("detection-dialog-close").onclick = () => {
+    const dialog = document.getElementById("detection-dialog");
+    dialog.close();
+}
+
 function isValidPsk(psk) {
     if (psk.length < 8 || psk.length > 63) {
         return false;
@@ -295,6 +339,32 @@ function isValidPsk(psk) {
     }
 
     return true;
+}
+
+let checkedap = document.getElementById("ap-mode").checked;
+document.getElementById("ssid").disabled = !checkedap;
+document.getElementById("psk").disabled = !checkedap;
+document.getElementById("app-net").disabled = !checkedap;
+document.getElementById("ap-mode").onchange= () => {
+    let checked = document.getElementById("ap-mode").checked;
+    document.getElementById("ssid").disabled = !checked;
+    document.getElementById("psk").disabled = !checked;
+    document.getElementById("app-net").disabled = !checked;
+}
+
+document.getElementById("app-net").onclick = () => {
+    if (confirm("This connection is not secure. Do you still want to send it?\nこの接続は盗聴される恐れがあります。それでも送信しますか?\n\nヒント:より安全に設定する場合はSDカードのatom_config.tomlを変更してください。")) {
+        let ap_mode = document.getElementById("ap-mode").checked;
+        let ssid = document.getElementById("ssid").value;
+        let psk = document.getElementById("psk").value;
+        if (!isValidPsk(psk)) {
+            alert("PSK must be 8 to 63 characters long and contain only printable ASCII characters.\nPSKは8文字から63文字の長さで、印刷可能なASCII文字のみを含む必要があります。");
+        }
+        connection.send(`net,${ap_mode},${ssid},${psk}`);
+        alert("Changes will apply after rebooting.\n変更は再起動後、適用されます。")
+    } else {
+
+    }
 }
 
 const ranges = document.querySelectorAll('input[type="range"]');

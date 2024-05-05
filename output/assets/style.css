@@ -3,6 +3,7 @@ html {
     --c-darker: #222;
     --c-line: #555;
     --c-font: #FFF;
+    --c-font-dark: #777;
     font-family: "Roboto Mono", monospace;
     font-optical-sizing: auto;
     color: var(--c-font);
@@ -179,7 +180,7 @@ dialog::backdrop {
     font-family: "Roboto Mono", monospace;
     font-optical-sizing: auto;
     background-color: #555;
-    color: white;
+    color: var(--c-font-dark);
     border: none;
     border-radius: 5px;
     text-align: center;
@@ -338,14 +339,34 @@ dialog .toggle .slider {
     border: 2px solid var(--c-line);
     border-radius: 5px; 
     font-size: 16px; 
-    transition: all 0.3s;
     width: 100%;
     max-width: 200px;
     background-color: var(--c-dark);
-    color: white;
+    color: var(--c-font);
 }
 
 .styled-input:focus {
     border-color: #3498db;
     outline: none;
+}
+
+.styled-input:disabled {
+    color: var(--c-font-dark);
+    user-select: none;
+}
+
+.time-input {
+    width: 55px;
+    padding: 5px;
+    border: 1px solid var(--c-line); 
+    background-color: var(--c-darker);
+    border-radius: 5px;
+    font-family: "Roboto Mono", monospace;
+    color: var(--c-font);
+}
+
+.time-input:focus {
+    border-color: #3498db; 
+    outline: none;
+    box-shadow: 0px 0px 10px rgba(0, 150, 136, 0.2);
 }

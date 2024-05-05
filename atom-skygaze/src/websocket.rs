@@ -3,6 +3,7 @@ use crate::config::AtomConfig;
 use crate::gpio::*;
 use crate::system;
 use crate::AppState;
+use crate::config::save_atomconf;
 use axum::extract::{
     ws::{Message, WebSocket},
     State, WebSocketUpgrade,
@@ -69,26 +70,6 @@ pub async fn handle_socket(
     };
 
     if sender.send(app_state_message).await.is_err() {
-        return;
-    }
-
-    let atomconf_message = {
-        let atom_conf_tmp = match atom_conf.lock() {
-            Ok(guard) => guard,
-            Err(_) => {
-                _ = sender.close();
-                return;
-            }
-        };
-        let atomconf_json = serde_json::to_string(&atom_conf_tmp.clone()).unwrap();
-        drop(atom_conf_tmp);
-        Message::Text(format!(
-            "{{\"type\":\"atomconf\",\"payload\":{}}}",
-            atomconf_json
-        ))
-    };
-
-    if sender.send(atomconf_message).await.is_err() {
         return;
     }
 
@@ -278,7 +259,23 @@ pub async fn handle_socket(
                             drop(app_state_tmp);
                             tokio::spawn(save_to_file(app_state_clone));
                         }
-                        "atomconf" => {}
+                        "net" => {
+                            drop(app_state_tmp);
+                            if text.len() == 4 {
+                                let mut atom_conf_tmp = match atom_conf.lock() {
+                                    Ok(guard) => guard,
+                                    Err(_) => {
+                                        continue;
+                                    }
+                                };
+                                atom_conf_tmp.netconf.ap_mode =  text[1] == "true";
+                                atom_conf_tmp.netconf.ssid = text[2].to_string();
+                                atom_conf_tmp.netconf.psk = text[3].to_string();
+                                let atomconf_instance = atom_conf_tmp.clone();
+                                tokio::spawn(save_atomconf(atomconf_instance));
+                                drop(atom_conf_tmp);
+                            }
+                        }
                         "sync" => {
                             drop(app_state_tmp);
                             if text.len() == 3 {
@@ -305,7 +302,9 @@ pub async fn handle_socket(
                             tokio::spawn(system::reboot(flag));
                             break;
                         }
-                        _ => {}
+                        _ => {
+                            println!("Unknwon command")
+                        }
                     }
                 }
                 Message::Binary(buffer) => {

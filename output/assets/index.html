@@ -19,9 +19,52 @@
                     <button id="wifi-dialog-close" class="dialog-close">X</button>
                 </div>
             </div>
-            <div class="one-line-sub">
-                Reboot
-                <button id="reboot" class="button">Reboot</button>
+            <div class="control-panel">
+                <div class="one-line">
+                    Network
+                </div>
+                <div class="one-line-sub">
+                    AP mode
+                    <label class="toggle" for="ap-mode">
+                        <input type="checkbox" id="ap-mode">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="one-line-sub">
+                    SSID
+                    <input id="ssid" type="text" class="styled-input">
+                </div>
+                <div class="one-line-sub">
+                    PSK
+                    <input id="psk" type="text" class="styled-input">
+                </div>
+                <div class="one-line-sub">
+                    Apply
+                    <button id="app-net" class="button">Apply</button>
+                </div>
+            </div>
+            <div class="control-panel">
+                <div class="one-line">
+                    Time
+                </div>
+                <div class="one-line-sub">
+                    ATOMCam
+                    <p id="atom-time"></p>
+                </div>
+                <div class="one-line-sub">
+                    Device
+                    <p id="dev-time"></p>
+                </div>
+                <div class="one-line-sub">
+                    Synchronize Time
+                    <button id="sync" class="button">Sync</button>
+                </div>
+            </div>
+            <div class="control-panel">
+                <div class="one-line-sub">
+                    Reboot
+                    <button id="reboot" class="button">Reboot</button>
+                </div>
             </div>
         </dialog>
         <dialog id="video-dialog" class="dialog">
@@ -39,9 +82,28 @@
                 </div>
             </div>
         </dialog>
+        <dialog id="detection-dialog" class="dialog">
+            <div class="control-panel">
+                <div class="one-line-title">
+                    Detection Settings
+                    <button id="detection-dialog-close" class="dialog-close">X</button>
+                </div>
+            </div>
+            <div class="control-panel">
+                Detection Time
+                <div class="one-line-sub">
+                    <label for="start-time">Start</label>
+                    <input type="time" id="start-time" name="start-time" class="time-input">
+                </div>
+                <div class="one-line-sub">
+                    <label for="start-time">End</label>
+                    <input type="time" id="end-time" name="start-time" class="time-input">
+                </div>
+            </div>
+        </dialog>
         <div class="left">
             <div class="control-panel">
-                <div class="one-line-sub">
+                <div class="one-line">
                     ATOM Cam Settings
                     <button id="wifi-settings" class="button">Open</button>
                 </div>
@@ -66,11 +128,18 @@
             </div>
             <div class="control-panel">
                 <div class="one-line">
-                    Meteor Detect
+                    Meteor Detection
+                </div>
+                <div class="one-line-sub">
+                    Enable
                     <label class="toggle">
                         <input type="checkbox" id="det">
                         <span class="slider"></span>
                     </label>
+                </div>
+                <div class="one-line-sub">
+                    Settings
+                    <button id="det-settings" class="button">Open</button>
                 </div>
             </div>
             <div class="control-panel">
