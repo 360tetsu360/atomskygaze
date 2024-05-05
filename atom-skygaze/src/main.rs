@@ -3,6 +3,7 @@ use crate::config::save_to_file;
 use crate::config::*;
 use crate::detection::*;
 use crate::download::download_file;
+use crate::download::view_file;
 use crate::gpio::*;
 use crate::imp::*;
 use crate::isp::log_all_value;
@@ -20,7 +21,6 @@ use std::thread;
 use std::{net::SocketAddr, path::PathBuf};
 use tokio::sync::watch;
 use tower_http::services::ServeDir;
-use crate::download::view_file;
 
 mod config;
 mod detection;

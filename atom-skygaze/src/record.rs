@@ -11,6 +11,7 @@ use std::path::Path;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use chrono::TimeDelta;
 
 pub fn mp4save_loops(
     detected_rx: mpsc::Receiver<Option<DateTime<FixedOffset>>>,
@@ -106,6 +107,14 @@ unsafe fn get_h264_stream(
         mp4muxer.init_video(1920, 1080, true, &mp4title);
 
         loop {
+            let current_time = Local::now() + Duration::hours(9);
+            if current_time >= target_time {
+                break;
+            } else if target_time - current_time >= TimeDelta::minutes(1) {
+                // if system time was set to past.
+                break;
+            }
+
             let shutdown_flag = match flag.lock() {
                 Ok(guard) => guard,
                 Err(_) => continue,
@@ -147,11 +156,6 @@ unsafe fn get_h264_stream(
                     tx.send(file).unwrap();
                     is_detecting = false;
                 }
-            }
-
-            let current_time = Local::now() + Duration::hours(9);
-            if current_time >= target_time {
-                break;
             }
 
             if IMP_Encoder_PollingStream(3, 10000) < 0 {

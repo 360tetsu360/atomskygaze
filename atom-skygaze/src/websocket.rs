@@ -13,6 +13,8 @@ use futures::StreamExt;
 use isvp_sys::*;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::sync::mpsc;
 use tokio::sync::watch;
 
 type AppStateWs = State<(
@@ -47,6 +49,7 @@ pub async fn handle_socket(
     flag: Arc<Mutex<bool>>,
 ) {
     let (mut sender, mut receiver) = socket.split();
+    let (time_tx, mut time_rx) = mpsc::channel(2);
 
     // To avoid deadlock.
     let app_state_message = {
@@ -99,6 +102,14 @@ pub async fn handle_socket(
                 Message::Text(texta) => {
                     let text: Vec<&str> = texta.split(',').collect();
                     match text[0] {
+                        // Measure round trip time.
+                        "time" => {
+                            let now = std::time::Instant::now();
+                            drop(app_state_tmp);
+                            if time_tx.send(now).await.is_err() {
+                                break;
+                            }
+                        }
                         "mode" => {
                             if text.len() == 2 {
                                 if text[1] == "day" {
@@ -268,7 +279,29 @@ pub async fn handle_socket(
                             tokio::spawn(save_to_file(app_state_clone));
                         }
                         "atomconf" => {}
+                        "sync" => {
+                            drop(app_state_tmp);
+                            if text.len() == 3 {
+                                println!("{}", text[1]);
+                                let new_time = timeval {
+                                    tv_sec: text[1].parse().unwrap(),
+                                    tv_usec: text[2].parse().unwrap(),
+                                };
+                                unsafe {
+                                    let timezone_: *const timezone = std::ptr::null();
+
+                                    let result = settimeofday(&new_time, timezone_);
+
+                                    if result == 0 {
+                                        println!("Set system time");
+                                    } else {
+                                        println!("Failed to set system time");
+                                    }
+                                }
+                            }
+                        }
                         "reboot" => {
+                            drop(app_state_tmp);
                             tokio::spawn(system::reboot(flag));
                             break;
                         }
@@ -287,24 +320,56 @@ pub async fn handle_socket(
 
     tokio::spawn(async move {
         loop {
-            let message = tokio::select! {
-                val = log_rx.changed() => {
-                    if val.is_ok() {
-                        let msg = match log_rx.borrow_and_update().clone() {
-                            LogType::Detection(timestamp, mp4path) => {
-                                format!("{{\"type\":\"detected\",\"payload\":{{\"timestamp\":\"{}\",\"saved_file\":\"{}\"}}}}", timestamp, mp4path)
-                            },
-                            _ => "".to_string(),
-                        };
-                        Message::Text(msg)
-                    } else {
-                        break;
+            let main = async {
+                tokio::select! {
+                    val = log_rx.changed() => {
+                        if val.is_ok() {
+                            let msg = match log_rx.borrow_and_update().clone() {
+                                LogType::Detection(timestamp, mp4path) => {
+                                    format!(
+                                        "{{\"type\":\"detected\",\"payload\":{{\"timestamp\":\"{}\",\"saved_file\":\"{}\"}}}}",
+                                        timestamp,
+                                        mp4path
+                                    )
+                                },
+                                _ => "".to_string(),
+                            };
+                            Message::Text(msg)
+                        } else {
+                            Message::Close(None)
+                        }
+                    }
+                    val = rx.changed() => {
+                        if val.is_ok() {
+                            let img = rx.borrow_and_update().clone();
+                            Message::Binary(img)
+                        } else {
+                            Message::Close(None)
+                        }
                     }
                 }
-                val = rx.changed() => {
-                    if val.is_ok() {
-                        let img = rx.borrow_and_update().clone();
-                        Message::Binary(img)
+            };
+
+            let message = tokio::select! {
+                val = main => {
+                    if matches!(val, Message::Close(None)) {
+                        break;
+                    }
+                    val
+                }
+                val = time_rx.recv() => {
+                    if let Some(time) = val {
+                        let now = std::time::Instant::now();
+                        let duration = now.duration_since(time);
+                        let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+
+                        let msg = format!(
+                            "{{\"type\":\"time\",\"payload\":{{\"duration\":\"{}\", \"time\":\"{}\"}}}}",
+                            duration.as_micros(),
+                            time.as_millis()
+                        );
+
+                        Message::Text(msg)
                     } else {
                         break;
                     }
