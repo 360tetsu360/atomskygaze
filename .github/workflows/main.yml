@@ -30,6 +30,9 @@ jobs:
         run: |
           cd build/buildroot-2024.02
           make defconfig BR2_DEFCONFIG=$GITHUB_WORKSPACE/configs/atomskygaze_workflow_defconfig
+          # Add some configuration for custom packages.
+          echo 'BR2_PACKAGE_BUSYBOX_INIT=y' >> .config
+          echo 'BR2_PACKAGE_BUSYBOX_INIT_CONFIG="../../configs/busybox-init.config"' >> .config
           cp -r $GITHUB_WORKSPACE/custompackages/package/* package/
       
       - name: Build
