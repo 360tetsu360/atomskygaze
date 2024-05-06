@@ -29,7 +29,7 @@ jobs:
       - name: Setup Buildroot
         run: |
           cd build/buildroot-2024.02
-          make defconfig BR2_DEFCONFIG=$GITHUB_WORKSPACE/configs/atomskygaze_defconfig
+          make defconfig BR2_DEFCONFIG=$GITHUB_WORKSPACE/configs/atomskygaze_workflow_defconfig
           cp -r $GITHUB_WORKSPACE/custompackages/package/* package/
       
       - name: Build
