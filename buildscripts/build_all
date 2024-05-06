@@ -8,7 +8,7 @@ cp -dpf staging/lib/libgcc_s.so* target/lib/
 mkdir -p target/usr/lib
 cp -dpf staging/usr/lib/libstdc++.so* target/usr/lib/
 find ./build -name ".stamp_target_installed*" -print | xargs rm -f
-cd /atomtools/build/buildroot-2016.02
+cd /atomtools/build/buildrot-2016.02
 cmp /src/custompackages/package/Config.in package/Config.in || cp /src/configs/atomcam_defconfig .config
 cp -pr /src/custompackages/package/* package
 make

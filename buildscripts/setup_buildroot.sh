@@ -1,12 +1,14 @@
 #!/bin/bash
 set -e
 
-cd /atomtools/build/buildroot-2016.02
+BASE_DIR=/atomskygaze/build/buildroot-2024.02
 
-rm -rf /atomtools/build/buildroot-2016.02/package/ffmpeg
-rm -rf /atomtools/build/buildroot-2016.02/package/mjpg-streamer
-rm -rf /atomtools/build/buildroot-2016.02/package/ncurses
-cp -r /src/custompackages/package/* /atomtools/build/buildroot-2016.02/package/
+cd $BASE_DIR
+
+rm -rf $BASE_DIR/package/ffmpeg
+rm -rf $BASE_DIR/package/mjpg-streamer
+rm -rf $BASE_DIR/package/ncurses
+cp -r /src/custompackages/package/* $BASE_DIR/package/
 cp -r /src/lib/* /atomskygaze/build/buildroot-2024.02/output/target/usr/lib/
 
 patch -p1 < /src/patches/add_fp_no_fused_madd.patch

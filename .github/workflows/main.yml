@@ -12,14 +12,27 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Create build directory
+        run: mkdir -p build
       
-      - name: Download Buildroot
-        run: curl -o - https://buildroot.org/downloads/buildroot-2024.02.tar.gz | tar zxvf -
-      
-      - name: Download toolchain
+      - name: Download Buildroot and toolchains
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: git clone https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/Dafang-Hacks/mips-gcc472-glibc216-64bit
+        run: |
+          cd build
+          curl -o - https://buildroot.org/downloads/buildroot-2024.02.tar.gz | tar zxvf -
+          git clone https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/Dafang-Hacks/mips-gcc472-glibc216-64bit
 
-      - name: List files in workspace
-        run: ls -la
+      - name: Setup Buildroot
+        run: |
+          make defconfig BR2_DEFCONFIG=configs/atomskygaze_defconfig
+          patch -p1 < patches/add_fp_no_fused_madd.patch
+          patch -p1 < patches/libv4l_add_lpthread.patch
+          patch -p1 < patches/linux_makefile.patch
+
+      - name: Build
+        run: |
+          cd build/buildroot-2024.02
+          buildscripts/make_initramfs.sh .  
+

@@ -4,21 +4,23 @@ set -o errexit          # Exit on most errors (see the manual)
 set -o errtrace         # Make sure any error trap is inherited
 set -o nounset          # Disallow expansion of unset variables
 set -o pipefail         # Use last non-zero exit code in a pipeline
-BASE_DIR=${BASE_DIR:-/atomskygaze/build/buildroot-2024.02/output}
+
 if [ $# -eq 0 ]
 then
-    echo "Usage: $0 <output_dir>"
+    echo "Usage: $0 <base_dir>"
     exit 1
 fi
 
 echo "=== build initramfs ==="
+
+BASE_DIR=$1
+ROOTFS_DIR=$1/output/initramfs_root
 
 [ -f $BASE_DIR/staging/bin-init/fsck.fat ] || make dosfstools-init
 [ -f $BASE_DIR/staging/bin-init/fsck.exfat ] || make exfatprogs-init
 [ -f $BASE_DIR/staging/bin-init/busybox ] || make busybox-init
 [ -f $BASE_DIR/host/usr/bin/mkimage ] || make host-uboot-tools
 
-ROOTFS_DIR=$1/initramfs_root
 rm -rf $ROOTFS_DIR
 mkdir -p $ROOTFS_DIR
 
