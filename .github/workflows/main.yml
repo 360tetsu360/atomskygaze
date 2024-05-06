@@ -31,7 +31,6 @@ jobs:
           cd build/buildroot-2024.02
           make defconfig BR2_DEFCONFIG=$GITHUB_WORKSPACE/configs/atomskygaze_defconfig
           cp -r $GITHUB_WORKSPACE/custompackages/package/* package/
-          cp -r $GITHUB_WORKSPACE/lib/* output/target/usr/lib/
       
       - name: Build
         run: |
