@@ -1,7 +1,9 @@
 name: Build atom-skygaze
 on:
   push:
-    branches: main
+    branches: 
+      - main
+      - build
   pull_request:
     branches: main
     
@@ -27,7 +29,7 @@ jobs:
       - name: Setup Buildroot
         run: |
           cd build/buildroot-2024.02
-          make defconfig BR2_DEFCONFIG=configs/atomskygaze_defconfig
+          make defconfig BR2_DEFCONFIG=../../configs/atomskygaze_defconfig
           patch -p1 < patches/add_fp_no_fused_madd.patch
           patch -p1 < patches/libv4l_add_lpthread.patch
           patch -p1 < patches/linux_makefile.patch
