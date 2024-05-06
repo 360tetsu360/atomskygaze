@@ -1,0 +1,25 @@
+name: Build atom-skygaze
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: main
+    
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Download Buildroot
+        run: curl -o - https://buildroot.org/downloads/buildroot-2024.02.tar.gz | tar zxvf -
+      
+      - name: Download toolchain
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: git clone https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/Dafang-Hacks/mips-gcc472-glibc216-64bit
+
+      - name: List files in workspace
+        run: ls -la
