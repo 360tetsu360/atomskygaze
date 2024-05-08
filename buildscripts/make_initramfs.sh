@@ -15,6 +15,7 @@ echo "=== build initramfs ==="
 
 BASE_DIR=$1
 ROOTFS_DIR=$1/output/initramfs_root
+WORKSPACE=${GITHUB_WORKSPACE:-/src}
 
 [ -f $BASE_DIR/staging/bin-init/fsck.fat ] || make dosfstools-init
 [ -f $BASE_DIR/staging/bin-init/fsck.exfat ] || make exfatprogs-init
@@ -27,7 +28,7 @@ mkdir -p $ROOTFS_DIR
 cd $ROOTFS_DIR
 mkdir -p {bin,dev,etc,lib,mnt,proc,root,sbin,sys,tmp}
 
-cp -r /src/initramfs_skeleton/* $ROOTFS_DIR/
+cp -r $WORKSPACE/initramfs_skeleton/* $ROOTFS_DIR/
 cp $BASE_DIR/build/dosfstools-init-3.0.28/fsck.fat $ROOTFS_DIR/bin/
 cp $BASE_DIR/build/exfatprogs-init-1.2.2/fsck/fsck.exfat $ROOTFS_DIR/bin/
 cp $BASE_DIR/build/busybox-init-1.24.1/busybox $ROOTFS_DIR/bin/

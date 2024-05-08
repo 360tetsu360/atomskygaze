@@ -1,0 +1,11 @@
+[build]
+target = "mipsel-unknown-linux-gnu"
+
+[target.mipsel-unknown-linux-gnu]
+linker = "/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-gcc"
+ar = "/atomskygaze/build/buildroot-2024.02/output/host/bin/mipsel-ingenic-linux-gnu-ar"
+
+[env]
+OPENCV_LINK_LIBS = "opencv_core,opencv_gapi,opencv_imgcodecs,opencv_imgproc,opencv_videoio,opencv_ximgproc,opencv_video,opencv_calib3d,opencv_features2d,opencv_flann"
+OPENCV_LINK_PATHS = "/atomskygaze/build/buildroot-2024.02/output/host/mipsel-ingenic-linux-gnu/sysroot/usr/lib"
+OPENCV_INCLUDE_PATHS = "/atomskygaze/build/buildroot-2024.02/output/host/mipsel-ingenic-linux-gnu/sysroot/usr/include/opencv4"

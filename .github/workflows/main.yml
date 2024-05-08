@@ -34,9 +34,21 @@ jobs:
           echo 'BR2_PACKAGE_BUSYBOX_INIT=y' >> .config
           echo 'BR2_PACKAGE_BUSYBOX_INIT_CONFIG="../../configs/busybox-init.config"' >> .config
           cp -r $GITHUB_WORKSPACE/custompackages/package/* package/
+
+      - name: Setup rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+          rustup toolchain install nightly
+          source $HOME/.cargo/env
       
-      - name: Build
+      - name: Patch minimp4.rs
+        run: |
+          cd $GITHUB_WORKSPACE/submodules/minimp4.rs
+          patch -p1 < $GITHUB_WORKSPACE/patches/minimp4.patch
+      
+      - name: Build initramfs
         run: |
           cd build/buildroot-2024.02
-          $GITHUB_WORKSPACE/buildscripts/make_initramfs.sh .  
+          $GITHUB_WORKSPACE/buildscripts/make_initramfs.sh .
+      
 
