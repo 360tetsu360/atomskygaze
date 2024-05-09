@@ -38,7 +38,7 @@ jobs:
       - name: Setup rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          rustup toolchain install nightly -y
+          rustup toolchain install nightly
           source $HOME/.cargo/env
       
       - name: Patch minimp4.rs
