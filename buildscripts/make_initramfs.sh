@@ -31,12 +31,12 @@ cp $OUT_DIR/build/busybox-init-1.24.1/busybox $ROOTFS_DIR/bin/
 # Save a few bytes by removing the readme
 rm -f $ROOTFS_DIR/README.md
 
-mknod $ROOTFS_DIR/dev/console c 5 1
-mknod $ROOTFS_DIR/dev/null c 1 3
-mknod $ROOTFS_DIR/dev/tty0 c 4 0
-mknod $ROOTFS_DIR/dev/tty1 c 4 1
-mknod $ROOTFS_DIR/dev/tty2 c 4 2
-mknod $ROOTFS_DIR/dev/tty3 c 4 3
-mknod $ROOTFS_DIR/dev/tty4 c 4 4
+sudo mknod $ROOTFS_DIR/dev/console c 5 1
+sudo mknod $ROOTFS_DIR/dev/null c 1 3
+sudo mknod $ROOTFS_DIR/dev/tty0 c 4 0
+sudo mknod $ROOTFS_DIR/dev/tty1 c 4 1
+sudo mknod $ROOTFS_DIR/dev/tty2 c 4 2
+sudo mknod $ROOTFS_DIR/dev/tty3 c 4 3
+sudo mknod $ROOTFS_DIR/dev/tty4 c 4 4
 
 find . | cpio -H newc -o > ../images/initramfs.cpio

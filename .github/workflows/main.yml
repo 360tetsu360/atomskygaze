@@ -51,7 +51,7 @@ jobs:
       - name: Build initramfs
         run: |
           cd build/buildroot-2024.02
-          sudo $GITHUB_WORKSPACE/buildscripts/make_initramfs.sh
+          $GITHUB_WORKSPACE/buildscripts/make_initramfs.sh
       
       - name: Build all
         run: |
