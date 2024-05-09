@@ -199,7 +199,6 @@ address=/$HOSTNAME.local/192.168.2.1
 EOF
 
   dnsmasq -C /configs/etc/dnsmasq.conf
-  udhcpc -i wlan0 -x hostname:atomskygaze -p /var/run/udhcpc.pid -b &
 else
   echo "Unknown mode"
 fi

@@ -5,17 +5,12 @@ set -o errtrace         # Make sure any error trap is inherited
 set -o nounset          # Disallow expansion of unset variables
 set -o pipefail         # Use last non-zero exit code in a pipeline
 
-if [ $# -eq 0 ]
-then
-    echo "Usage: $0 <base_dir>"
-    exit 1
-fi
-
 echo "=== build initramfs ==="
 
 WORKSPACE=${GITHUB_WORKSPACE:-/src}
 BASE_DIR=${GITHUB_WORKSPACE:-/atomskygaze}/build/buildroot-2024.02
 ROOTFS_DIR=$BASE_DIR/output/initramfs_root
+OUT_DIR=$BASE_DIR/output
 
 [ -f $BASE_DIR/staging/bin-init/fsck.fat ] || make dosfstools-init
 [ -f $BASE_DIR/staging/bin-init/fsck.exfat ] || make exfatprogs-init
@@ -29,9 +24,9 @@ cd $ROOTFS_DIR
 mkdir -p {bin,dev,etc,lib,mnt,proc,root,sbin,sys,tmp}
 
 cp -r $WORKSPACE/initramfs_skeleton/* $ROOTFS_DIR/
-cp $BASE_DIR/build/dosfstools-init-3.0.28/fsck.fat $ROOTFS_DIR/bin/
-cp $BASE_DIR/build/exfatprogs-init-1.2.2/fsck/fsck.exfat $ROOTFS_DIR/bin/
-cp $BASE_DIR/build/busybox-init-1.24.1/busybox $ROOTFS_DIR/bin/
+cp $OUT_DIR/build/dosfstools-init-3.0.28/fsck.fat $ROOTFS_DIR/bin/
+cp $OUT_DIR/build/exfatprogs-init-1.2.2/fsck/fsck.exfat $ROOTFS_DIR/bin/
+cp $OUT_DIR/build/busybox-init-1.24.1/busybox $ROOTFS_DIR/bin/
 
 # Save a few bytes by removing the readme
 rm -f $ROOTFS_DIR/README.md

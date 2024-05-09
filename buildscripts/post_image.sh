@@ -4,7 +4,7 @@ set -e
 WORKSPACE=${GITHUB_WORKSPACE:-/src}
 
 cd output/images
-echo "atomcam" > hostname
+echo "atomaskygaze" > hostname
 touch authorized_keys
 cp -dpf uImage.lzma factory_t31_ZMC6tiIDQN
 mv rootfs.squashfs rootfs_hack.squashfs
