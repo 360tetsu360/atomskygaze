@@ -12,6 +12,9 @@ BASE_DIR=${GITHUB_WORKSPACE:-/atomskygaze}/build/buildroot-2024.02
 ROOTFS_DIR=$BASE_DIR/output/initramfs_root
 OUT_DIR=$BASE_DIR/output
 
+echo $ROOTFS_DIR
+echo $OUT_DIR
+
 [ -f $BASE_DIR/staging/bin-init/fsck.fat ] || make dosfstools-init
 [ -f $BASE_DIR/staging/bin-init/fsck.exfat ] || make exfatprogs-init
 [ -f $BASE_DIR/staging/bin-init/busybox ] || make busybox-init
@@ -39,4 +42,4 @@ sudo mknod $ROOTFS_DIR/dev/tty2 c 4 2
 sudo mknod $ROOTFS_DIR/dev/tty3 c 4 3
 sudo mknod $ROOTFS_DIR/dev/tty4 c 4 4
 
-find . | cpio -H newc -o > ../images/initramfs.cpio
+find . | cpio -H newc -o > $OUT_DIR/images/initramfs.cpio
