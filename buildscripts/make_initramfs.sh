@@ -13,9 +13,9 @@ fi
 
 echo "=== build initramfs ==="
 
-BASE_DIR=$1
-ROOTFS_DIR=$1/output/initramfs_root
 WORKSPACE=${GITHUB_WORKSPACE:-/src}
+BASE_DIR=${GITHUB_WORKSPACE:-/atomskygaze}/build/buildroot-2024.02
+ROOTFS_DIR=$BASE_DIR/output/initramfs_root
 
 [ -f $BASE_DIR/staging/bin-init/fsck.fat ] || make dosfstools-init
 [ -f $BASE_DIR/staging/bin-init/fsck.exfat ] || make exfatprogs-init
