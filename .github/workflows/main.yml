@@ -46,6 +46,7 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           rustup toolchain install nightly
+          rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
           source $HOME/.cargo/env
       
       - name: Patch minimp4.rs
@@ -62,3 +63,16 @@ jobs:
         run: |
           cd build/buildroot-2024.02
           make
+      
+      - name: Find artifact
+        run: |
+          ZIP_FILE=$(find . -name 'atom-skygaze.v*.*.zip' -print -quit)
+          ZIP_NAME=$(basename "$ZIP_FILE")
+          echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_ENV
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_FILE }}
