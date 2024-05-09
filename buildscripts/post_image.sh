@@ -14,5 +14,5 @@ cp -r $WORKSPACE/assets $WORKSPACE/output
 cd $WORKSPACE/output
 VERSION=$(cat $WORKSPACE/configs/skygaze.ver)
 ZIP_NAME="$WORKSPACE/atom-skygaze.v$VERSION.zip"
-[ -f $ZIP_NAME ] || rm "$ZIP_NAME"
+[ -f $ZIP_NAME ] && rm "$ZIP_NAME"
 zip -r "$ZIP_NAME" .
