@@ -26,7 +26,7 @@ mkdir -p $ROOTFS_DIR
 cd $ROOTFS_DIR
 mkdir -p {bin,dev,etc,lib,mnt,proc,root,sbin,sys,tmp}
 
-cp -r $WORKSPACE/initramfs_skeleton/* $ROOTFS_DIR/
+cp -pR "$WORKSPACE"/initramfs_skeleton/* $ROOTFS_DIR
 cp $OUT_DIR/build/dosfstools-init-3.0.28/fsck.fat $ROOTFS_DIR/bin/
 cp $OUT_DIR/build/exfatprogs-init-1.2.2/fsck/fsck.exfat $ROOTFS_DIR/bin/
 cp $OUT_DIR/build/busybox-init-1.24.1/busybox $ROOTFS_DIR/bin/

@@ -43,7 +43,7 @@ jobs:
           echo 'BR2_PACKAGE_BUSYBOX_INIT_SHOW_OTHERS=y' >> .config
           echo 'BR2_PACKAGE_DOSFSTOOLS_INIT=y' >> .config
           echo 'BR2_PACKAGE_ATBM_WIFI=y' >> .config
-          cp -r $GITHUB_WORKSPACE/custompackages/package/* package/
+          cp -pR $GITHUB_WORKSPACE/custompackages/package/* package
 
       - name: Setup rust
         run: |
@@ -61,12 +61,24 @@ jobs:
         run: |
           cd build/buildroot-2024.02
           $GITHUB_WORKSPACE/buildscripts/make_initramfs.sh
+          make rootfs-initramfs
+      
+      - name: Check initramfs dir
+        run: |
+          cd build/buildroot-2024.02/output/initramfs_root
+          ls -la
+
+      - name: Build linux
+        run: |
+          cd build/buildroot-2024.02
+          make linux-rebuild
+        
       
       - name: Build all
         run: |
           cd build/buildroot-2024.02
           make
-      
+
       - name: Find artifact
         run: |
           ZIP_FILE=$(find . -name 'atom-skygaze.v*.*.zip' -print -quit)

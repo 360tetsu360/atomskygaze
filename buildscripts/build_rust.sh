@@ -18,6 +18,6 @@ OPENCV_INCLUDE_PATHS = "$BUILDROOT_DIR/output/host/mipsel-ingenic-linux-gnu/sysr
 EOF
 
 cd $WORKSPACE
-cp -r $WORKSPACE/lib/* $BUILDROOT_DIR/output/target/usr/lib/
+cp -pR "$WORKSPACE"/lib/* $BUILDROOT_DIR/output/target/usr/lib
 cargo +nightly build -Z build-std --target mipsel-unknown-linux-gnu --release
 cp -dpf $WORKSPACE/target/mipsel-unknown-linux-gnu/release/atom-skygaze $TARGET_DIR/usr/bin/atom-skygaze
