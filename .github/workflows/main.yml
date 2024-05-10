@@ -40,6 +40,9 @@ jobs:
           # Add some configuration for custom packages.
           echo 'BR2_PACKAGE_BUSYBOX_INIT=y' >> .config
           echo 'BR2_PACKAGE_BUSYBOX_INIT_CONFIG="../../configs/busybox-init.config"' >> .config
+          echo 'BR2_PACKAGE_BUSYBOX_INIT_SHOW_OTHERS=y' >> .config
+          echo 'BR2_PACKAGE_DOSFSTOOLS_INIT=y' >> .config
+          echo 'BR2_PACKAGE_ATBM_WIFI=y' >> .config
           cp -r $GITHUB_WORKSPACE/custompackages/package/* package/
 
       - name: Setup rust
