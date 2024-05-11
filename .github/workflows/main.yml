@@ -1,6 +1,9 @@
 name: Build atom-skygaze
 on:
   push:
+    tags:
+      - 'build-test'
+      - 'build'
     branches: 
       - main
       - build
@@ -62,24 +65,6 @@ jobs:
           cd build/buildroot-2024.02
           $GITHUB_WORKSPACE/buildscripts/make_initramfs.sh
           make rootfs-initramfs
-      
-      - name: Check initramfs dir
-        run: |
-          cd build/buildroot-2024.02/output/initramfs_root
-          ls -la
-      
-      - name: Find cpio
-        run: |
-          CPIO_FILE=$GITHUB_WORKSPACE/build/buildroot-2024.02/output/images/initramfs.cpio
-          CPIO_NAME=$(basename "$CPIO_FILE")
-          echo "CPIO_FILE=$CPIO_FILE" >> $GITHUB_ENV
-          echo "CPIO_NAME=$CPIO_NAME" >> $GITHUB_ENV
-
-      - name: Upload cpio
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.CPIO_NAME }}
-          path: ${{ env.CPIO_FILE }}
 
       - name: Build linux
         run: |

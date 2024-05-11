@@ -10,7 +10,7 @@
     </head>
     <body>
         <header>
-            ATOM-SKYGAZE v0.1.1
+            ATOM-SKYGAZE v0.1.3
         </header>
         <dialog id="wifi-dialog" class="dialog">
             <div class="control-panel">
@@ -74,7 +74,9 @@
                     <button id="video-dialog-close" class="dialog-close">X</button>
                 </div>
             </div>
-            <video controls id="videoframe" style="width: 960px;" preload="none"></video>
+            <div class="control-panel">
+                <video controls id="videoframe" style="width: 960px;" preload="none"></video>
+            </div>
             <div class="control-panel">
                 <div class="one-line-sub">
                     Download
@@ -99,6 +101,17 @@
                     <label for="start-time">End</label>
                     <input type="time" id="end-time" name="start-time" class="time-input">
                 </div>
+            </div>
+        </dialog>
+        <dialog id="prev-dialog" class="dialog">
+            <div class="control-panel">
+                <div class="one-line-title">
+                    Preview
+                    <button id="prev-dialog-close" class="dialog-close">X</button>
+                </div>
+            </div>
+            <div class="control-panel">
+                <img id="prev-dialog" class="prev" src="aaa.jpg">
             </div>
         </dialog>
         <div class="left">
@@ -158,9 +171,11 @@
                 </div>
             </div>
         </div> 
-        <hr class="separator">
         <div class="preview">
-            <img id="prev" src="aaa.jpg">
+            <div class="prev-box">
+                <img id="prev" class="prev" src="aaa.jpg">
+                <img src="zoom.svg" class="zoom" id="zoom">
+            </div>
             <div class="grid-overlay" id="gridOverlay"></div>
             <div class="log-title">Logs</div>
             <div id="log-box">

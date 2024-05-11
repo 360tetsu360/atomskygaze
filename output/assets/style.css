@@ -71,9 +71,26 @@ footer {
     z-index: 1;
 }
 
-img {
+.prev-box {
+    position: relative;
+}
+
+.prev {
     width: 100%;
     object-fit: cover;
+}
+
+.zoom {
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    width: 25px;
+    height: 25px;
+    display: none;
+}
+
+.prev-box:hover .zoom {
+    display: block;
 }
 
 button {

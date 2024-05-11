@@ -66,6 +66,7 @@ connection.onerror = function(error) {
 };
 
 var prev = document.getElementById("prev");
+var prev_dialog = document.getElementById("prev-dialog");
 var blob = null;
 connection.onmessage = function(event) {
     if (typeof event.data === 'string') {
@@ -169,7 +170,9 @@ connection.onmessage = function(event) {
         }
         const binaryData = event.data;
         blob = new Blob([binaryData], { type: 'image/jpeg' });
-        prev.src = URL.createObjectURL(blob);
+        let url = URL.createObjectURL(blob);
+        prev.src = url;
+        prev_dialog.src = url;
       } else {
         console.log('Unknown message type');
       }
@@ -326,6 +329,16 @@ document.getElementById("det-settings").onclick = () => {
 document.getElementById("detection-dialog-close").onclick = () => {
     const dialog = document.getElementById("detection-dialog");
     dialog.close();
+}
+
+document.getElementById("prev-dialog-close").onclick = () => {
+    const dialog = document.getElementById("prev-dialog");
+    dialog.close();
+}
+
+document.getElementById("zoom").onclick = () => {
+    const dialog = document.getElementById("prev-dialog");
+    dialog.showModal();
 }
 
 function isValidPsk(psk) {
