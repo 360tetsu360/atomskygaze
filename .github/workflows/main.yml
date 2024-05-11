@@ -67,6 +67,19 @@ jobs:
         run: |
           cd build/buildroot-2024.02/output/initramfs_root
           ls -la
+      
+      - name: Find cpio
+        run: |
+          CPIO_FILE=$GITHUB_WORKFLOW/build/buildroot-2024.02/output/images/initramfs.cpio
+          CPIO_NAME=$(basename "$CPIO_FILE")
+          echo "CPIO_FILE=$CPIO_FILE" >> $GITHUB_ENV
+          echo "CPIO_NAME=$CPIO_NAME" >> $GITHUB_ENV
+
+      - name: Upload cpio
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.CPIO_NAME }}
+          path: ${{ env.CPIO_FILE }}
 
       - name: Build linux
         run: |
