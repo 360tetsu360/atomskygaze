@@ -70,7 +70,7 @@ jobs:
       
       - name: Find cpio
         run: |
-          CPIO_FILE=$GITHUB_WORKFLOW/build/buildroot-2024.02/output/images/initramfs.cpio
+          CPIO_FILE=$GITHUB_WORKSPACE/build/buildroot-2024.02/output/images/initramfs.cpio
           CPIO_NAME=$(basename "$CPIO_FILE")
           echo "CPIO_FILE=$CPIO_FILE" >> $GITHUB_ENV
           echo "CPIO_NAME=$CPIO_NAME" >> $GITHUB_ENV
