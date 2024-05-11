@@ -1,14 +1,15 @@
 name: Build atom-skygaze
 on:
   push:
-    tags:
-      - 'build-test'
-      - 'build'
     branches: 
       - main
       - build
+    tags:
+      - 'build-test'
+      - 'build'
   pull_request:
     branches: main
+
     
 jobs:
   build:
