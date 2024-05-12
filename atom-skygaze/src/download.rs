@@ -65,7 +65,7 @@ pub async fn view_file(query: Query<FileQuery>) -> Result<Response<Body>, Status
     let body = Body::from_stream(stream);
 
     let mut headers = HeaderMap::new();
-    headers.insert(header::CONTENT_TYPE, "video/mp4".parse().unwrap());
+    headers.insert(header::CONTENT_TYPE, "image/jpeg".parse().unwrap());
     headers.insert("Accept-Ranges", "bytes".parse().unwrap());
 
     Ok((headers, body).into_response())

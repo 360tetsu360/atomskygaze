@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "atom-skygaze",
     "isvp-sys",
+    "mxu",
 ]
 
 [patch.crates-io]

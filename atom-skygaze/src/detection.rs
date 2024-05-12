@@ -1,12 +1,10 @@
 use chrono::*;
-//use fitsio::images::ImageDescription;
-//use fitsio::images::ImageType;
-//use fitsio::FitsFile;
 use isvp_sys::*;
 use log::error;
 use opencv::core::*;
 //use opencv::imgcodecs::imencode;
 //use opencv::imgcodecs::imencode_def;
+//use opencv::imgcodecs::imwrite_def;
 //use opencv::imgproc;
 //use opencv::imgproc::*;
 use crate::AppState;
@@ -22,6 +20,7 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::watch;
+use mxu::*;
 
 const RESIZED_X: usize = 32;
 const RESIZED_Y: usize = 18;
@@ -191,7 +190,7 @@ fn get_move_area(diff: &Mat, mask: &[u8], std_weight: f64, threshold: f64) -> Ve
     find_bounding_rectangles(&resized)
 }
 
-unsafe fn composite(diff_list: &mut VecDeque<Vec<u8>>) -> Vec<u8> {
+unsafe fn integrate(diff_list: &mut VecDeque<Vec<u8>>) -> Vec<u8> {
     let mut res = diff_list.pop_front().unwrap();
     while let Some(diff) = diff_list.pop_front() {
         buffer_add(res.as_ptr(), diff.as_ptr(), res.as_mut_ptr(), res.len());
@@ -200,14 +199,24 @@ unsafe fn composite(diff_list: &mut VecDeque<Vec<u8>>) -> Vec<u8> {
     res
 }
 
+unsafe fn composite(comp_list: &mut VecDeque<Vec<u8>>) -> Vec<u8> {
+    // NV12 type
+    let mut res = vec![0u8; 1920*(1080 + 540)];
+    let frame_bufs: Vec<*const u8> = comp_list.iter().map(|buf| buf.as_ptr()).collect();
+    buffer_div_add(frame_bufs.as_ptr(), res.as_mut_ptr(), comp_list.len() as u8, res.len());
+
+    res
+}
+
 pub unsafe fn start(
     app_state: Arc<Mutex<AppState>>,
-    sender: mpsc::Sender<Option<DateTime<FixedOffset>>>,
+    sender: mpsc::Sender<(Vec<u8> ,DateTime<FixedOffset>)>,
     log_tx: watch::Sender<LogType>,
     flag: Arc<Mutex<bool>>,
 ) {
     let mut last_frame: *mut IMPFrameInfo = std::ptr::null_mut();
     let mut diff_list = VecDeque::<Vec<u8>>::with_capacity(10);
+    let mut comp_list = VecDeque::<Vec<u8>>::with_capacity(10);
     let mut detection_start: DateTime<FixedOffset> =
         Utc::now().with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
 
@@ -231,7 +240,9 @@ pub unsafe fn start(
         drop(shutdown_flag);
 
         let mut new_frame: *mut IMPFrameInfo = std::ptr::null_mut();
+        let mut full_frame: *mut IMPFrameInfo = std::ptr::null_mut();
 
+        IMP_FrameSource_GetFrame(0, &mut full_frame);
         IMP_FrameSource_GetFrame(1, &mut new_frame);
 
         let (img_width, img_height) = ((*new_frame).width, (*new_frame).height);
@@ -254,8 +265,17 @@ pub unsafe fn start(
 
             diff_list.push_back(diff);
 
+            // NV12 type 
+            let mut frame = vec![0u8; 1920 * (1080 + 540)];
+            fast_memcpy(
+                (*full_frame).virAddr as *const u8,
+                frame.as_mut_ptr(),
+                (1920 * (1080 + 540)) as usize,
+            );
+            comp_list.push_back(frame);
+
             if diff_list.len() > (app_state_tmp.fps / 5) as usize {
-                let mut diff_buff = composite(&mut diff_list);
+                let mut diff_buff = integrate(&mut diff_list);
                 let integrated_diff = Mat::new_rows_cols_with_data_def(
                     img_height as i32,
                     img_width as i32,
@@ -297,20 +317,25 @@ pub unsafe fn start(
                         let time: DateTime<FixedOffset> =
                             now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
                         if detecting_flag == 0 {
-                            sender.send(Some(time)).unwrap();
+                            let comp_frame = composite(&mut comp_list);
+                            sender.send((comp_frame, time)).unwrap();
                             detection_start = time;
                         }
                         println!("[{}] Meteor Detected", time);
                         writeln!(file, "[{}] detected", time).unwrap();
-                        detecting_flag = app_state_tmp.fps * 3;
+                        detecting_flag = app_state_tmp.fps;
                     }
                 }
+            }
+
+            while comp_list.len() > (app_state_tmp.fps / 5) as usize {
+                comp_list.pop_front();
             }
 
             if detecting_flag != 0 {
                 detecting_flag -= 1;
                 if detecting_flag == 0 {
-                    sender.send(None).unwrap();
+                    //sender.send(None).unwrap();
                     println!("saving detection");
 
                     let fractional_second =
@@ -321,9 +346,9 @@ pub unsafe fn start(
                         fractional_second as i32
                     );
 
-                    let mp4path = detection_start.format("%Y%m%d%H%M%S.mp4").to_string();
+                    let jpgpath = detection_start.format("%Y-%m-%d_%H_%M_%S.jpg").to_string();
 
-                    let log = LogType::Detection(timestamp, mp4path);
+                    let log = LogType::Detection(timestamp, jpgpath);
 
                     let log_clone = log.clone();
                     log_tx.send(log_clone).unwrap();
@@ -333,6 +358,7 @@ pub unsafe fn start(
         }
         drop(app_state_tmp);
 
+        IMP_FrameSource_ReleaseFrame(0, full_frame);
         IMP_FrameSource_ReleaseFrame(1, last_frame);
         last_frame = new_frame;
     }

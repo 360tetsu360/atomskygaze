@@ -7,9 +7,10 @@ authors = ["tmmgq"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-#fitsio = { version = "0.21.2", features = ["fitsio-src"] }
+fitsio = { version = "0.21.2", features = ["fitsio-src"] }
 opencv = { version = "0.89", features = ["videoio", "imgproc", "imgcodecs", "gapi", "video", "calib3d", "features2d", "flann", "ximgproc", "clang-runtime"] }
 isvp-sys = { path = "../isvp-sys" }
+mxu = { path = "../mxu" }
 env_logger = "0.11.3"
 log = "0.4.21"
 base64 = "0.22.0"

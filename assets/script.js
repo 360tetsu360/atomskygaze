@@ -93,7 +93,7 @@ connection.onmessage = function(event) {
             new_item.appendChild(oneline);
             new_item.onclick = () => {
                 document.getElementById("video-dialog-title").textContent = `[${timestamp}] Meteor Detected`;
-                document.getElementById("videoframe").src = `/view?filename=${record_path}`;
+                document.getElementById("imageframe").src = `/view?filename=${record_path}`;
                 document.getElementById("download").href = `/download?filename=${record_path}`;
                 const dialog = document.getElementById("video-dialog");
                 dialog.showModal();

@@ -7,7 +7,7 @@ Store memory as mxu vector.
 ## _mx128_sub_b
 Subtract signed 16x8bit vector.
 
-# _mx128_subuu_b
+## _mx128_subuu_b
 Subtract unsigned 16x8bit vector.
 
 ## _mx128_maxu_b

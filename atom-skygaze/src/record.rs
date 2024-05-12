@@ -5,16 +5,24 @@ use chrono::{Datelike, Duration, Local, Timelike};
 use isvp_sys::*;
 use log::error;
 use minimp4::Mp4Muxer;
-use std::collections::VecDeque;
 use std::fs::File;
 use std::path::Path;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use chrono::TimeDelta;
+use std::io::BufWriter;
+use opencv::core::*;
+use opencv::imgcodecs::imencode_def;
+use opencv::imgproc::cvt_color_def;
+use opencv::imgproc::COLOR_YUV2RGB_NV21;
+use std::io::Write;
+use fitsio::images::ImageDescription;
+use fitsio::images::ImageType;
+use fitsio::FitsFile;
 
 pub fn mp4save_loops(
-    detected_rx: mpsc::Receiver<Option<DateTime<FixedOffset>>>,
+    detected_rx: mpsc::Receiver<(Vec<u8>, DateTime<FixedOffset>)>,
     app_state: Arc<Mutex<AppState>>,
     flag: Arc<Mutex<bool>>,
 ) {
@@ -22,24 +30,25 @@ pub fn mp4save_loops(
 
     thread::Builder::new()
         .name("h264_loop".to_string())
-        .spawn(move || unsafe { get_h264_stream(tx, detected_rx, app_state, flag) })
+        .spawn(move || unsafe { get_h264_stream(tx, app_state, flag) })
         .unwrap();
 
     thread::Builder::new()
         .name("filesave_loop".to_string())
         .spawn(move || sync_file(rx))
         .unwrap();
+
+    thread::Builder::new()
+        .name("save_detection_loop".to_string())
+        .spawn(move || save_detection(detected_rx))
+        .unwrap();
 }
 
 unsafe fn get_h264_stream(
     tx: mpsc::Sender<File>,
-    detected_rx: mpsc::Receiver<Option<DateTime<FixedOffset>>>,
     app_state: Arc<Mutex<AppState>>,
     flag: Arc<Mutex<bool>>,
 ) -> bool {
-    let mut queue = VecDeque::<Vec<u8>>::new();
-    let mut is_detecting = false;
-    let mut detect_video = None;
 
     if IMP_Encoder_StartRecvPic(3) < 0 {
         error!("IMP_Encoder_StartRecvPic failed");
@@ -132,32 +141,6 @@ unsafe fn get_h264_stream(
             let fps = app_state_tmp.fps;
             drop(app_state_tmp);
 
-            if let Ok(det) = detected_rx.try_recv() {
-                if det.is_some() && !is_detecting {
-                    let time = det.unwrap();
-                    let mp4path = time
-                        .format("/media/mmc/records/detected/%Y%m%d%H%M%S.mp4")
-                        .to_string();
-
-                    let mp4title = time.format("Detected %Y-%m-%d %H:%M:%S").to_string();
-                    let file = File::create(mp4path).unwrap();
-                    let mut det_mp4muxer = Mp4Muxer::new(file);
-                    det_mp4muxer.init_video(1920, 1080, true, &mp4title);
-
-                    for frame in queue.iter() {
-                        det_mp4muxer.write_video_with_fps(frame, fps);
-                    }
-                    detect_video = Some(det_mp4muxer);
-                    is_detecting = true;
-                }
-
-                if det.is_none() && is_detecting {
-                    let file = detect_video.take().unwrap().close();
-                    tx.send(file).unwrap();
-                    is_detecting = false;
-                }
-            }
-
             if IMP_Encoder_PollingStream(3, 10000) < 0 {
                 error!("IMP_Encoder_PollingStream failed");
                 continue;
@@ -211,36 +194,12 @@ unsafe fn get_h264_stream(
                             (pack.length - rem_size) as usize,
                         );
                         mp4muxer.write_video_with_fps(src2, fps);
-
-                        if is_detecting {
-                            detect_video
-                                .as_mut()
-                                .unwrap()
-                                .write_video_with_fps(src1, fps);
-                            detect_video
-                                .as_mut()
-                                .unwrap()
-                                .write_video_with_fps(src2, fps);
-                        } else {
-                            let buff: Vec<u8> = [src1, src2].concat();
-                            queue.push_back(buff);
-                        }
                     } else {
                         let src = std::slice::from_raw_parts(
                             (stream.virAddr + pack.offset) as *const u8,
                             pack.length as usize,
                         );
                         mp4muxer.write_video_with_fps(src, fps);
-
-                        if is_detecting {
-                            detect_video
-                                .as_mut()
-                                .unwrap()
-                                .write_video_with_fps(src, fps);
-                        } else {
-                            let buff = src.to_vec();
-                            queue.push_back(buff);
-                        }
                     }
                 }
             }
@@ -250,9 +209,6 @@ unsafe fn get_h264_stream(
                 return false;
             }
 
-            while queue.len() > 76 {
-                queue.pop_front();
-            }
         }
 
         let file = mp4muxer.close();
@@ -264,5 +220,42 @@ fn sync_file(rx: mpsc::Receiver<File>) {
     while let Ok(file) = rx.recv() {
         file.sync_all().unwrap();
         println!("Saved mp4");
+    }
+}
+
+fn save_detection(rx: mpsc::Receiver<(Vec<u8>, DateTime<FixedOffset>)>) {
+    while let Ok((mut frame, time)) = rx.recv() {
+        let comp = unsafe {Mat::new_rows_cols_with_data_def(
+            (1080 + 540) as i32,
+            1920 as i32,
+            CV_8UC1,
+            frame.as_mut_ptr() as *mut ::std::os::raw::c_void,
+        ).unwrap()};
+
+        let mut colored = Mat::default();
+        cvt_color_def(&comp, &mut colored, COLOR_YUV2RGB_NV21).unwrap();
+        let mut jpeg_buf = Vector::<u8>::new();
+        imencode_def(".jpg", &colored, &mut jpeg_buf).unwrap();
+        
+        let path = time.format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S.jpg").to_string();
+        let file = File::create(&path).unwrap();
+        let mut writer = BufWriter::new(file);
+        writer.write_all(jpeg_buf.as_slice()).unwrap();
+        writer.into_inner().unwrap().sync_all().unwrap();
+
+        let path = time.format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S.fits").to_string();
+        let image_description = ImageDescription {
+            data_type: ImageType::UnsignedByte,
+            dimensions: &[1080 + 540, 1920],
+        };
+
+        let mut fitsfile = FitsFile::create(&path)
+            .with_custom_primary(&image_description)
+            .overwrite()
+            .open().unwrap();
+        
+        let hdu = fitsfile.primary_hdu().unwrap();
+
+        hdu.write_image(&mut fitsfile, &frame).unwrap();
     }
 }
