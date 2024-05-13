@@ -2,7 +2,7 @@ use std::env;
 
 fn main() {
     // Tell Cargo that if the given file changes, to rerun this build script.
-    
+
     let build_dir = env::var("GITHUB_WORKSPACE").unwrap_or("/atomskygaze".to_string());
     println!(
         "cargo:rustc-link-search=native={}/build/buildroot-2024.02/output/target/usr/lib",

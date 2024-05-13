@@ -20,6 +20,7 @@ pub struct AppConfig {
     pub contrast: u8,
     pub sharpness: u8,
     pub saturation: u8,
+    pub timezone: i32,
 }
 
 pub async fn save_to_file(app_state: AppState) -> std::io::Result<()> {
@@ -38,6 +39,7 @@ pub async fn save_to_file(app_state: AppState) -> std::io::Result<()> {
         contrast: app_state.contrast,
         sharpness: app_state.sharpness,
         saturation: app_state.saturation,
+        timezone: app_state.timezone,
     };
 
     let mut file = File::create("/media/mmc/config.toml").await?;
@@ -65,6 +67,7 @@ pub async fn load_from_file() -> std::io::Result<AppState> {
         contrast: app_config.contrast,
         sharpness: app_config.sharpness,
         saturation: app_config.saturation,
+        timezone: app_config.timezone,
         logs: vec![],
     })
 }

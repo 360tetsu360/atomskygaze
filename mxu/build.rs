@@ -6,9 +6,20 @@ fn main() {
 
     let build_dir = env::var("GITHUB_WORKSPACE").unwrap_or("/atomskygaze".to_string());
     let src_dir = env::var("GITHUB_WORKSPACE").unwrap_or("/src".to_string());
-    let gcc_path = format!("{}/build/mips-gcc472-glibc216-64bit/bin/mips-linux-gnu-gcc", build_dir);
+    let gcc_path = format!(
+        "{}/build/mips-gcc472-glibc216-64bit/bin/mips-linux-gnu-gcc",
+        build_dir
+    );
     let output = Command::new(&gcc_path)
-        .args(&["-c", "mxu_imgproc.c", "-mmxu2", "-fPIC", "-O2", "-o", "libmxu_imgproc.a"])
+        .args(&[
+            "-c",
+            "mxu_imgproc.c",
+            "-mmxu2",
+            "-fPIC",
+            "-O2",
+            "-o",
+            "libmxu_imgproc.a",
+        ])
         .output()
         .expect("Failed to execute GCC");
 

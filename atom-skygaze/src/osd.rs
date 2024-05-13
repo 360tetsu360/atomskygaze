@@ -208,8 +208,13 @@ pub unsafe fn imp_osd_start(
         if app_state_tmp.timestamp {
             timestamp_data.fill(0);
             let now: DateTime<Utc> = Utc::now();
-            let time: DateTime<FixedOffset> =
-                now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
+            let offset = if app_state_tmp.timezone < 0 {
+                FixedOffset::west_opt(-app_state_tmp.timezone)
+            } else {
+                FixedOffset::east_opt(app_state_tmp.timezone)
+            }
+            .unwrap();
+            let time: DateTime<FixedOffset> = now.with_timezone(&offset);
             let fractional_second = (time.timestamp_subsec_millis() as f64) / 100.0;
             let text = format!(
                 "{}.{} {}   ATOM-SKYGAZE v{}",

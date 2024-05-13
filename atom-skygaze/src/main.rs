@@ -60,6 +60,7 @@ pub struct AppState {
     pub contrast: u8,
     pub sharpness: u8,
     pub saturation: u8,
+    pub timezone: i32,
     pub logs: Vec<LogType>,
 }
 
@@ -91,6 +92,7 @@ async fn main() {
                 contrast: 128,
                 sharpness: 128,
                 saturation: 128,
+                timezone: 9,
                 logs: vec![],
             };
             save_to_file(app_state.clone()).await.unwrap();

@@ -1,25 +1,27 @@
 use crate::AppState;
 use chrono::DateTime;
+use chrono::Datelike;
 use chrono::FixedOffset;
-use chrono::{Datelike, Duration, Local, Timelike};
+use chrono::TimeDelta;
+use chrono::Timelike;
+use chrono::Utc;
+use fitsio::images::ImageDescription;
+use fitsio::images::ImageType;
+use fitsio::FitsFile;
 use isvp_sys::*;
 use log::error;
 use minimp4::Mp4Muxer;
-use std::fs::File;
-use std::path::Path;
-use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
-use std::thread;
-use chrono::TimeDelta;
-use std::io::BufWriter;
 use opencv::core::*;
 use opencv::imgcodecs::imencode_def;
 use opencv::imgproc::cvt_color_def;
 use opencv::imgproc::COLOR_YUV2RGB_NV21;
+use std::fs::File;
+use std::io::BufWriter;
 use std::io::Write;
-use fitsio::images::ImageDescription;
-use fitsio::images::ImageType;
-use fitsio::FitsFile;
+use std::path::Path;
+use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 pub fn mp4save_loops(
     detected_rx: mpsc::Receiver<(Vec<u8>, DateTime<FixedOffset>)>,
@@ -49,7 +51,6 @@ unsafe fn get_h264_stream(
     app_state: Arc<Mutex<AppState>>,
     flag: Arc<Mutex<bool>>,
 ) -> bool {
-
     if IMP_Encoder_StartRecvPic(3) < 0 {
         error!("IMP_Encoder_StartRecvPic failed");
         return false;
@@ -66,7 +67,19 @@ unsafe fn get_h264_stream(
         }
         drop(shutdown_flag);
 
-        let current_time = Local::now() + Duration::hours(9);
+        let app_state_tmp = match app_state.lock() {
+            Ok(guard) => guard,
+            Err(_) => continue,
+        };
+        let now: DateTime<Utc> = Utc::now();
+        let offset = if app_state_tmp.timezone < 0 {
+            FixedOffset::west_opt(-app_state_tmp.timezone)
+        } else {
+            FixedOffset::east_opt(app_state_tmp.timezone)
+        }
+        .unwrap();
+        let current_time: DateTime<FixedOffset> = now.with_timezone(&offset);
+        drop(app_state_tmp);
         let next_minute = current_time.minute() + 1;
 
         let (adjusted_hour, adjusted_minute) = if next_minute >= 60 {
@@ -116,7 +129,20 @@ unsafe fn get_h264_stream(
         mp4muxer.init_video(1920, 1080, true, &mp4title);
 
         loop {
-            let current_time = Local::now() + Duration::hours(9);
+            let app_state_tmp = match app_state.lock() {
+                Ok(guard) => guard,
+                Err(_) => continue,
+            };
+            let now: DateTime<Utc> = Utc::now();
+            let offset = if app_state_tmp.timezone < 0 {
+                FixedOffset::west_opt(-app_state_tmp.timezone)
+            } else {
+                FixedOffset::east_opt(app_state_tmp.timezone)
+            }
+            .unwrap();
+            let current_time: DateTime<FixedOffset> = now.with_timezone(&offset);
+            drop(app_state_tmp);
+
             if current_time >= target_time {
                 break;
             } else if target_time - current_time >= TimeDelta::minutes(1) {
@@ -208,7 +234,6 @@ unsafe fn get_h264_stream(
                 error!("IMP_Encoder_ReleaseStream failed");
                 return false;
             }
-
         }
 
         let file = mp4muxer.close();
@@ -225,25 +250,33 @@ fn sync_file(rx: mpsc::Receiver<File>) {
 
 fn save_detection(rx: mpsc::Receiver<(Vec<u8>, DateTime<FixedOffset>)>) {
     while let Ok((mut frame, time)) = rx.recv() {
-        let comp = unsafe {Mat::new_rows_cols_with_data_def(
-            (1080 + 540) as i32,
-            1920 as i32,
-            CV_8UC1,
-            frame.as_mut_ptr() as *mut ::std::os::raw::c_void,
-        ).unwrap()};
+        let comp = unsafe {
+            Mat::new_rows_cols_with_data_def(
+                (1080 + 540) as i32,
+                1920 as i32,
+                CV_8UC1,
+                frame.as_mut_ptr() as *mut ::std::os::raw::c_void,
+            )
+            .unwrap()
+        };
 
         let mut colored = Mat::default();
+        // Actually, it has to be NV12 but somehow this works.
         cvt_color_def(&comp, &mut colored, COLOR_YUV2RGB_NV21).unwrap();
         let mut jpeg_buf = Vector::<u8>::new();
         imencode_def(".jpg", &colored, &mut jpeg_buf).unwrap();
-        
-        let path = time.format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S.jpg").to_string();
+
+        let path = time
+            .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S.jpg")
+            .to_string();
         let file = File::create(&path).unwrap();
         let mut writer = BufWriter::new(file);
         writer.write_all(jpeg_buf.as_slice()).unwrap();
         writer.into_inner().unwrap().sync_all().unwrap();
 
-        let path = time.format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S.fits").to_string();
+        let path = time
+            .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S.fits")
+            .to_string();
         let image_description = ImageDescription {
             data_type: ImageType::UnsignedByte,
             dimensions: &[1080 + 540, 1920],
@@ -252,8 +285,9 @@ fn save_detection(rx: mpsc::Receiver<(Vec<u8>, DateTime<FixedOffset>)>) {
         let mut fitsfile = FitsFile::create(&path)
             .with_custom_primary(&image_description)
             .overwrite()
-            .open().unwrap();
-        
+            .open()
+            .unwrap();
+
         let hdu = fitsfile.primary_hdu().unwrap();
 
         hdu.write_image(&mut fitsfile, &frame).unwrap();

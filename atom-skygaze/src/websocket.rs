@@ -1,9 +1,9 @@
+use crate::config::save_atomconf;
 use crate::config::save_to_file;
 use crate::config::AtomConfig;
 use crate::gpio::*;
 use crate::system;
 use crate::AppState;
-use crate::config::save_atomconf;
 use axum::extract::{
     ws::{Message, WebSocket},
     State, WebSocketUpgrade,
@@ -268,7 +268,7 @@ pub async fn handle_socket(
                                         continue;
                                     }
                                 };
-                                atom_conf_tmp.netconf.ap_mode =  text[1] == "true";
+                                atom_conf_tmp.netconf.ap_mode = text[1] == "true";
                                 atom_conf_tmp.netconf.ssid = text[2].to_string();
                                 atom_conf_tmp.netconf.psk = text[3].to_string();
                                 let atomconf_instance = atom_conf_tmp.clone();
@@ -277,9 +277,9 @@ pub async fn handle_socket(
                             }
                         }
                         "sync" => {
-                            drop(app_state_tmp);
-                            if text.len() == 3 {
-                                println!("{}", text[1]);
+                            if text.len() == 4 {
+                                app_state_tmp.timezone = text[3].parse().unwrap();
+                                drop(app_state_tmp);
                                 let new_time = timeval {
                                     tv_sec: text[1].parse().unwrap(),
                                     tv_usec: text[2].parse().unwrap(),

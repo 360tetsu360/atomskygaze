@@ -10,6 +10,7 @@ use opencv::core::*;
 use crate::AppState;
 use crate::LogType;
 //use lz4::EncoderBuilder;
+use mxu::*;
 use opencv::prelude::FastLineDetectorTrait;
 use opencv::ximgproc::create_fast_line_detector;
 use std::collections::VecDeque;
@@ -20,7 +21,6 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::watch;
-use mxu::*;
 
 const RESIZED_X: usize = 32;
 const RESIZED_Y: usize = 18;
@@ -201,16 +201,21 @@ unsafe fn integrate(diff_list: &mut VecDeque<Vec<u8>>) -> Vec<u8> {
 
 unsafe fn composite(comp_list: &mut VecDeque<Vec<u8>>) -> Vec<u8> {
     // NV12 type
-    let mut res = vec![0u8; 1920*(1080 + 540)];
+    let mut res = vec![0u8; 1920 * (1080 + 540)];
     let frame_bufs: Vec<*const u8> = comp_list.iter().map(|buf| buf.as_ptr()).collect();
-    buffer_div_add(frame_bufs.as_ptr(), res.as_mut_ptr(), comp_list.len() as u8, res.len());
+    buffer_div_add(
+        frame_bufs.as_ptr(),
+        res.as_mut_ptr(),
+        comp_list.len() as u8,
+        res.len(),
+    );
 
     res
 }
 
 pub unsafe fn start(
     app_state: Arc<Mutex<AppState>>,
-    sender: mpsc::Sender<(Vec<u8> ,DateTime<FixedOffset>)>,
+    sender: mpsc::Sender<(Vec<u8>, DateTime<FixedOffset>)>,
     log_tx: watch::Sender<LogType>,
     flag: Arc<Mutex<bool>>,
 ) {
@@ -265,7 +270,7 @@ pub unsafe fn start(
 
             diff_list.push_back(diff);
 
-            // NV12 type 
+            // NV12 type
             let mut frame = vec![0u8; 1920 * (1080 + 540)];
             fast_memcpy(
                 (*full_frame).virAddr as *const u8,
@@ -314,8 +319,14 @@ pub unsafe fn start(
 
                     if !lines.is_empty() {
                         let now: DateTime<Utc> = Utc::now();
-                        let time: DateTime<FixedOffset> =
-                            now.with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
+                        let offset = if app_state_tmp.timezone < 0 {
+                            FixedOffset::west_opt(-app_state_tmp.timezone)
+                        } else {
+                            FixedOffset::east_opt(app_state_tmp.timezone)
+                        }
+                        .unwrap();
+
+                        let time: DateTime<FixedOffset> = now.with_timezone(&offset);
                         if detecting_flag == 0 {
                             let comp_frame = composite(&mut comp_list);
                             sender.send((comp_frame, time)).unwrap();

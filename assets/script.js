@@ -1,5 +1,44 @@
 const rows = 18;
 const columns = 32;
+// Time zone picker from
+const tzInts = [
+    {"label":"(UTC-12:00)", "value":-43200},
+    {"label":"(UTC-11:00)", "value":-39600},
+    {"label":"(UTC-10:00)", "value":-36000},
+    {"label":"(UTC-09:00)", "value":-32400},
+    {"label":"(UTC-08:00)", "value":-28800},
+    {"label":"(UTC-07:00)", "value":-25200},
+    {"label":"(UTC-06:00)", "value":-21600},
+    {"label":"(UTC-05:00)", "value":-18000},
+    {"label":"(UTC-04:00)", "value":-14400},
+    {"label":"(UTC-03:00)", "value":-10800},
+    {"label":"(UTC-02:00)", "value":-7200},
+    {"label":"(UTC-01:00)", "value":-3600},
+    {"label":"(UTC+00:00)", "value":0},
+    {"label":"(UTC+01:00)", "value":3600},
+    {"label":"(UTC+02:00)", "value":7200},
+    {"label":"(UTC+03:00)", "value":10800},
+    {"label":"(UTC+03:30)", "value":12600},
+    {"label":"(UTC+04:00)", "value":14400},
+    {"label":"(UTC+04:30)", "value":16200},
+    {"label":"(UTC+05:00)", "value":18000},
+    {"label":"(UTC+05:30)", "value":19800},
+    {"label":"(UTC+05:45)", "value":20700},
+    {"label":"(UTC+06:00)", "value":21600},
+    {"label":"(UTC+06:30)", "value":23400},
+    {"label":"(UTC+07:00)", "value":25200},
+    {"label":"(UTC+08:00)", "value":28800},
+    {"label":"(UTC+08:45)", "value":31500},
+    {"label":"(UTC+09:00)", "value":32400},
+    {"label":"(UTC+09:30)", "value":34200},
+    {"label":"(UTC+10:00)", "value":36000},
+    {"label":"(UTC+10:30)", "value":37800},
+    {"label":"(UTC+11:00)", "value":39600},
+    {"label":"(UTC+12:00)", "value":43200},
+    {"label":"(UTC+12:45)", "value":45900},
+    {"label":"(UTC+13:00)", "value":46800},
+    {"label":"(UTC+14:00)", "value":50400}
+];
 
 const gridOverlay = document.getElementById("gridOverlay");
 var is_clicking_left = false;
@@ -53,6 +92,8 @@ document.addEventListener("contextmenu", function(event) {
     event.preventDefault(); 
 });
 
+document.getElementById("timezone").appendChild(timezoneSelect());
+
 var atom_time = null;
 const host = window.location.host;
 var connection = new WebSocket(`ws://${host}/ws`);
@@ -93,7 +134,7 @@ connection.onmessage = function(event) {
             new_item.appendChild(oneline);
             new_item.onclick = () => {
                 document.getElementById("video-dialog-title").textContent = `[${timestamp}] Meteor Detected`;
-                document.getElementById("imageframe").src = `/view?filename=${record_path}`;
+                document.getElementById("videoframe").src = `/view?filename=${record_path}`;
                 document.getElementById("download").href = `/download?filename=${record_path}`;
                 const dialog = document.getElementById("video-dialog");
                 dialog.showModal();
@@ -207,11 +248,11 @@ function update_time() {
 setInterval('update_time()',500);
 
 document.getElementById("sync").onclick = () => {
+    var timezone = document.getElementById("tzselect").value;
     var now = (new Date().valueOf() / 1000).toFixed(2);
     const secs = Math.floor(now);
     const millis = Math.floor((now - secs) * 1000);
-    console.log(`sync,${secs},${millis}`);
-    connection.send(`sync,${secs},${millis}`);
+    connection.send(`sync,${secs},${millis},${timezone}`);
 }
 
 document.getElementById("wifi-settings").onclick = () => {
@@ -401,3 +442,27 @@ function updateParagraph(event) {
 ranges.forEach(range => {
     range.addEventListener('input', updateParagraph);
 });
+
+function timezoneSelect(){
+    var select = document.createElement("select");
+    select.id = "tzselect";
+
+    for (var i=0; i<tzInts.length; i++){
+      var tz = tzInts[i],
+          option = document.createElement("option");
+
+      option.value = tz.value
+      option.appendChild(document.createTextNode(tz.label))
+      select.appendChild(option)
+    }
+
+    var offset = (new Date().getTimezoneOffset()) / (-60);
+    for (var j = 0; j < select.options.length; j++) {
+        if (select.options[j].value == offset) {
+            select.options[j].selected = true;
+            break;
+        }
+    }
+
+    return select;
+}

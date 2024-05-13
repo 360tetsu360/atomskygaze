@@ -8,7 +8,15 @@ extern "C" {
 
     /// input1 + input2
     pub fn buffer_add(input1: *const u8, input2: *const u8, out: *mut u8, size: usize);
-    
+
+    /// Sum buffer
+    pub fn buffer_add_list(
+        input: *const *const u8,
+        out: *mut u8,
+        buf_size: usize,
+        list_size: usize,
+    );
+
     /// output += input / v
     pub fn buffer_div_add(input: *const *const u8, out: *mut u8, v: u8, size: usize);
 
