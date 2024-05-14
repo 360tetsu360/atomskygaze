@@ -4,6 +4,8 @@ if [ "$1" = "stop" -o "$1" = "restart" ] ; then
   ifconfig | grep eth0 && ifconfig eth0 down
   killall -SIGKILL wpa_supplicant
   killall -SIGKILL udhcpc
+  killall -SIGKILL hostapd
+  killall -SIGKILL dnsmasq
   [ "$1" = "stop" ] && exit 0
 fi
 
@@ -197,6 +199,8 @@ dhcp-range=192.168.2.2,192.168.2.10,255.255.255.0,24h
 domain=local
 address=/$HOSTNAME.local/192.168.2.1
 EOF
+
+  ifconfig wlan0 192.168.2.1 netmask 255.255.255.0 up
 
   dnsmasq -C /configs/etc/dnsmasq.conf
 else
