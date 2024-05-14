@@ -24,11 +24,10 @@ case "$1" in
       mkdir -p /media/mmc/records/detected
     fi
 
-    #/media/mmc/test
     if [ -f /media/mmc/atom-skygaze ]; then
-      /media/mmc/atom-skygaze &
+      /media/mmc/atom-skygaze
     else
-      atom-skygaze &
+      atom-skygaze
     fi
 	;;
   stop)

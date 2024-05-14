@@ -24,7 +24,7 @@ pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>, flag: Arc<Mutex<bool>>) -> 
 
         if IMP_Encoder_PollingStream(2, 10000) < 0 {
             error!("IMP_Encoder_PollingStream failed");
-            return false;
+            continue;
         }
 
         let mut stream = IMPEncoderStream {
@@ -53,7 +53,7 @@ pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>, flag: Arc<Mutex<bool>>) -> 
 
         if IMP_Encoder_GetStream(2, &mut stream, true) < 0 {
             error!("IMP_Encoder_GetStream failed");
-            return false;
+            continue;
         }
 
         let stream_packs = std::slice::from_raw_parts(
@@ -90,7 +90,7 @@ pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>, flag: Arc<Mutex<bool>>) -> 
 
         if IMP_Encoder_ReleaseStream(2, &mut stream) < 0 {
             error!("IMP_Encoder_ReleaseStream failed");
-            return false;
+            continue;
         }
     }
 }

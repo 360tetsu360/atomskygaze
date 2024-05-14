@@ -456,7 +456,7 @@ function timezoneSelect(){
       select.appendChild(option)
     }
 
-    var offset = (new Date().getTimezoneOffset()) / (-60);
+    var offset = (new Date().getTimezoneOffset()) * (-60);
     for (var j = 0; j < select.options.length; j++) {
         if (select.options[j].value == offset) {
             select.options[j].selected = true;
