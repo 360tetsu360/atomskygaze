@@ -56,10 +56,12 @@ jobs:
           rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
           source $HOME/.cargo/env
       
-      - name: Patch minimp4.rs
+      - name: Patch rust crates
         run: |
           cd $GITHUB_WORKSPACE/submodules/minimp4.rs
           patch -p1 < $GITHUB_WORKSPACE/patches/minimp4.patch
+          cd $GITHUB_WORKSPACE/submodules/rust-fitsio
+          patch -p1 < $GITHUB_WORKSPACE/patches/rust-fitsio.patch
       
       - name: Build initramfs
         run: |
