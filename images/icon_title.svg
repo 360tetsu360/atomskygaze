@@ -1,0 +1,20 @@
+<svg width="2000" height="700" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 700">
+  <g transform="translate(240, 100) rotate(-75 0 0) scale(01 1)">
+  	<path d="M -5 0 C -10 130 -10 270 -15 400 C -15 430 15 430 15 400 C 10 270 10 130 5 0 C 4 -8 -4 -8 -5 0" fill="#00ff00" stroke="black" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/>
+  	<path d="M 75 40 C 84.6667 161 94.3333 282 104 403 C 110 435 133 430 129 398 C 112 278.3333 95 158.6667 78 39 C 77 35 75 35 75 40" fill="#00ff00" stroke="black" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/>
+  	<path d="M -80 -27 C -96 64.6667 -112 156.3333 -128 248 C -132 270 -157 266 -152 243 C -130.6667 152.6667 -109.3333 62.3333 -88 -28 C -86 -34 -79 -32 -80 -27" fill="#00ff00" stroke="black" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(20,220)">
+    <polygon points="119,380 296,429 296,468 119,415" fill="#5a5050" stroke="black" stroke-linejoin="round" stroke-width="15"/>
+    <polygon points="296,429 119,380 279,327 444,360" fill="#d1d1d1" stroke="black" stroke-linejoin="round" stroke-width="15"/>
+    <polygon points="296,429 296,468 445,393 444,360 " fill="#999898" stroke="black" stroke-linejoin="round" stroke-width="15"/>
+    <polygon points="329,334 308,362, 330,379 367,364" fill="#a5a5a5" stroke="black" stroke-linejoin="round" stroke-width="15"/>
+    <polygon points="308,362, 330,379 304,373 302,370" fill="#b1b1b1" stroke="black" stroke-linejoin="round" stroke-width="15"/>
+    <polygon points="1,142 175,10 350,1 184,156" fill="#ffffff" stroke="black" stroke-linejoin="round" stroke-width="15"/>
+    <polygon points="1,142 184,156 299,374 122,333" fill="#9c9c9c" stroke="black" stroke-linejoin="round" stroke-width="15"/>
+    <polygon points="184,156 299,374 428,202 350,1" fill="#dddddd" stroke="black" stroke-linejoin="round" stroke-width="15"/>
+  </g>
+
+  <text x="750" y="300" font-family="Arial" font-size="250" font-weight="bold" fill="black">ATOM</text>
+  <text x="750" y="550" font-family="Arial" font-size="250" font-weight="bold" fill="black">SKYGAZE</text>
+</svg>

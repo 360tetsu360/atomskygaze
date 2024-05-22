@@ -1,8 +1,8 @@
-# ATOM-SKYGAZE
 <p align="center">  
-  <img width="40%" src="./images/icon.svg">
+  <img width="100%" src="./images/icon_title.svg">
 </p>
 
+# ATOM-SKYGAZE
 ATOM Cam2で流星観測をするためのハックです。<br>
 [atomcam_tools](https://github.com/mnakada/atomcam_tools)、[meteor_detect](https://github.com/kin-hasegawa/meteor-detect)をもとにしたプロジェクトです。
 
