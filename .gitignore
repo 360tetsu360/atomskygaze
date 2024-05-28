@@ -1,6 +1,7 @@
 factory_t31_ZMC6tiIDQN
 rootfs_hack.ext2
 rootfs_hack.squashfs
+output/assets
 *.zip
 Cargo.lock
 target
