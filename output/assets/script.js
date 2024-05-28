@@ -107,7 +107,7 @@ connection.onerror = function(error) {
 };
 
 var prev = document.getElementById("prev");
-var prev_dialog = document.getElementById("prev-dialog");
+var prev_dialog = document.getElementById("prev-dialog-prev");
 var blob = null;
 connection.onmessage = function(event) {
     if (typeof event.data === 'string') {
@@ -134,7 +134,7 @@ connection.onmessage = function(event) {
             new_item.appendChild(oneline);
             new_item.onclick = () => {
                 document.getElementById("video-dialog-title").textContent = `[${timestamp}] Meteor Detected`;
-                document.getElementById("videoframe").src = `/view?filename=${record_path}`;
+                document.getElementById("imageframe").src = `/view?filename=${record_path}`;
                 document.getElementById("download").href = `/download?filename=${record_path}`;
                 const dialog = document.getElementById("video-dialog");
                 dialog.showModal();
