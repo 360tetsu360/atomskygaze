@@ -161,23 +161,18 @@ fn dfs(
     }
 }
 
-fn get_move_area(diff: &Mat, mask: &[u8], std_weight: f64, threshold: f64) -> Vec<Blob> {
+fn get_move_area(diff: &Mat, mask: &[u8], overall_mean: f64, overall_stddev: f64, threshold: f64) -> Vec<Blob> {
     let mut resized = vec![];
     for y in 0..18 {
         let mut new_row = vec![];
         for x in 0..32 {
             let roi = Rect::new(x * ROI_SIZE, y * ROI_SIZE, ROI_SIZE, ROI_SIZE);
             let cropped = Mat::roi(diff, roi).unwrap();
-            let (mean, stddev): (f64, f64) = {
-                let mut mean = Scalar_::default();
-                let mut stddev = Scalar_::default();
-                mean_std_dev(&cropped, &mut mean, &mut stddev, &no_array()).unwrap();
-                (mean[0], stddev[0])
-            };
+            let mean: f64 = mean_def(&cropped).unwrap()[0];
 
-            let thresh_val = mean + stddev * std_weight;
+            let z_score = (mean - overall_mean) / overall_stddev;
 
-            let bin = if thresh_val > threshold && mask[(y * 32 + x) as usize] != 1 {
+            let bin = if z_score > threshold && mask[(y * 32 + x) as usize] != 1 {
                 1u8
             } else {
                 0u8
@@ -286,6 +281,16 @@ pub unsafe fn start(
 
             if diff_list.len() > (app_state_tmp.fps / 5) as usize {
                 let mut diff_buff = integrate(&mut diff_list);
+
+                let mut mean: f64 = 0.;
+                let mut stddev: f64 = 0.;
+                fast_mean_stddev(
+                    diff_buff.as_ptr(),
+                    (img_height * img_width) as usize,
+                    &mut mean,
+                    &mut stddev,
+                );
+
                 let integrated_diff = Mat::new_rows_cols_with_data_def(
                     img_height as i32,
                     img_width as i32,
@@ -297,7 +302,8 @@ pub unsafe fn start(
                 let boxes = get_move_area(
                     &integrated_diff,
                     &app_state_tmp.mask,
-                    app_state_tmp.detection_config.std_weight,
+                    mean,
+                    stddev,
                     app_state_tmp.detection_config.threshold,
                 );
                 //println!("{}", boxes.len());

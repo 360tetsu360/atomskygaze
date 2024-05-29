@@ -28,4 +28,7 @@ extern "C" {
 
     /// src -> dst
     pub fn fast_memcpy(src: *const u8, out: *mut u8, size: usize);
+
+    /// sum, squared sum
+    pub fn fast_mean_stddev(src: *const u8, length: usize, mean: *mut f64, stddev: *mut f64);
 }

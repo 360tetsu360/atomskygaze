@@ -37,7 +37,6 @@ mod webstream;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DetectionConfig {
-    pub std_weight: f64,
     pub threshold: f64,
     pub max_roi_size: usize,
     pub length_threshold: u32,
@@ -76,8 +75,7 @@ async fn main() {
                 detect: false,
                 detection_config: DetectionConfig {
                     max_roi_size: 20,
-                    std_weight: 2.,
-                    threshold: 30.,
+                    threshold: 3.,
                     length_threshold: 10,
                     distance_threshold: 1.732,
                 },

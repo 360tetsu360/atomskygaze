@@ -16,6 +16,7 @@ fn main() {
             "mxu_imgproc.c",
             "-mmxu2",
             "-fPIC",
+            "-lm",
             "-O2",
             "-o",
             "libmxu_imgproc.a",
