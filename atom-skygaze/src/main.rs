@@ -75,7 +75,7 @@ async fn main() {
                 detect: false,
                 detection_config: DetectionConfig {
                     max_roi_size: 20,
-                    threshold: 3.,
+                    threshold: 5.,
                     length_threshold: 10,
                     distance_threshold: 1.732,
                 },
