@@ -362,10 +362,12 @@ document.getElementById("reboot").onclick = () => {
     connection.send("reboot");
 }
 
+/*
 document.getElementById("det-settings").onclick = () => {
     const dialog = document.getElementById("detection-dialog");
     dialog.showModal();
 }
+*/
 
 document.getElementById("detection-dialog-close").onclick = () => {
     const dialog = document.getElementById("detection-dialog");
