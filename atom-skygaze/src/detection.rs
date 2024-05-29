@@ -161,7 +161,13 @@ fn dfs(
     }
 }
 
-fn get_move_area(diff: &Mat, mask: &[u8], overall_mean: f64, overall_stddev: f64, threshold: f64) -> Vec<Blob> {
+fn get_move_area(
+    diff: &Mat,
+    mask: &[u8],
+    overall_mean: f64,
+    overall_stddev: f64,
+    threshold: f64,
+) -> Vec<Blob> {
     let mut resized = vec![];
     for y in 0..18 {
         let mut new_row = vec![];
