@@ -10,8 +10,8 @@ fn main() {
         "{}/build/mips-gcc472-glibc216-64bit/bin/mips-linux-gnu-gcc",
         build_dir
     );
-    let output = Command::new(&gcc_path)
-        .args(&[
+    let output = Command::new(gcc_path)
+        .args([
             "-c",
             "mxu_imgproc.c",
             "-mmxu2",

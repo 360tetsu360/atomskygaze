@@ -17,11 +17,14 @@ extern "C" {
         list_size: usize,
     );
 
-    /// output = sum(input) / len(input)
+    /// output = sum(input_list) / len(input_list)
     pub fn buffer_div_add(input: *const *const u8, out: *mut u8, v: u8, size: usize);
 
-    /// output = max(input)
-    pub fn buffer_max(input: *const *const u8, out: *mut u8, frame_len: usize, size: usize);
+    /// output = max(input_list)
+    pub fn buffer_max_list(input: *const *const u8, out: *mut u8, frame_len: usize, size: usize);
+
+    /// output = max(input, output)
+    pub fn lighten_stack(src: *const u8, out: *mut u8, size: usize);
 
     /// src -> dst
     pub fn fast_memcpy(src: *const u8, out: *mut u8, size: usize);

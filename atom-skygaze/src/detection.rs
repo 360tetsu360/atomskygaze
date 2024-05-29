@@ -203,7 +203,7 @@ unsafe fn composite(comp_list: &mut VecDeque<Vec<u8>>) -> Vec<u8> {
     // NV12 type
     let mut res = Vec::with_capacity(1920 * (1080 + 540));
     let frame_bufs: Vec<*const u8> = comp_list.iter().map(|buf| buf.as_ptr()).collect();
-    buffer_div_add(
+    buffer_max_list(
         frame_bufs.as_ptr(),
         res.as_mut_ptr(),
         comp_list.len(),
@@ -223,6 +223,7 @@ pub unsafe fn start(
     let mut last_frame: *mut IMPFrameInfo = std::ptr::null_mut();
     let mut diff_list = VecDeque::<Vec<u8>>::with_capacity(10);
     let mut comp_list = VecDeque::<Vec<u8>>::with_capacity(10);
+    let mut stack_frame: Option<Vec<u8>> = None;
     let mut detection_start: DateTime<FixedOffset> =
         Utc::now().with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
 
@@ -278,7 +279,7 @@ pub unsafe fn start(
             fast_memcpy(
                 (*full_frame).virAddr as *const u8,
                 frame.as_mut_ptr(),
-                (1920 * (1080 + 540)) as usize,
+                1920 * (1080 + 540),
             );
             frame.set_len(1920 * (1080 + 540));
             comp_list.push_back(frame);
@@ -332,8 +333,7 @@ pub unsafe fn start(
 
                         let time: DateTime<FixedOffset> = now.with_timezone(&offset);
                         if detecting_flag == 0 {
-                            let comp_frame = composite(&mut comp_list);
-                            sender.send((comp_frame, time)).unwrap();
+                            stack_frame = Some(composite(&mut comp_list));
                             detection_start = time;
                         }
                         println!("[{}] Meteor Detected", time);
@@ -348,10 +348,24 @@ pub unsafe fn start(
             }
 
             if detecting_flag != 0 {
+                if let Some(stack_frame_mut) = stack_frame.as_mut() {
+                    //let st = std::time::Instant::now();
+                    lighten_stack(
+                        (*full_frame).virAddr as *const u8,
+                        stack_frame_mut.as_mut_ptr(),
+                        stack_frame_mut.len(),
+                    );
+                    //writeln!(file, "{} us elapsed", std::time::Instant::now().duration_since(st).as_micros()).unwrap();
+                }
+
                 detecting_flag -= 1;
                 if detecting_flag == 0 {
                     //sender.send(None).unwrap();
                     println!("saving detection");
+
+                    sender
+                        .send((stack_frame.take().unwrap(), detection_start))
+                        .unwrap();
 
                     let fractional_second =
                         (detection_start.timestamp_subsec_millis() as f64) / 100.0;

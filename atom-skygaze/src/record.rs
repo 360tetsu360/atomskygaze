@@ -252,8 +252,8 @@ fn save_detection(rx: mpsc::Receiver<(Vec<u8>, DateTime<FixedOffset>)>) {
     while let Ok((mut frame, time)) = rx.recv() {
         let comp = unsafe {
             Mat::new_rows_cols_with_data_def(
-                (1080 + 540) as i32,
-                1920 as i32,
+                1080 + 540,
+                1920,
                 CV_8UC1,
                 frame.as_mut_ptr() as *mut ::std::os::raw::c_void,
             )

@@ -64,7 +64,7 @@ void buffer_div_add(uint8_t** input_list, uint8_t* out, uint8_t v, size_t length
     }
 }
 
-void buffer_max(uint8_t** input_list, uint8_t* out, size_t frame_len, size_t length) {
+void buffer_max_list(uint8_t** input_list, uint8_t* out, size_t frame_len, size_t length) {
     size_t i, j;
 
     for (i = 0; i < length; i += VECTOR_SIZE) {
@@ -74,6 +74,16 @@ void buffer_max(uint8_t** input_list, uint8_t* out, size_t frame_len, size_t len
             dst = _mx128_maxu_b(dst, vec1);
         }
         _mx128_su1q((v16i8)dst, &out[i], 0);
+    }
+}
+
+void lighten_stack(uint8_t* src, uint8_t* dst, size_t length) {
+    size_t i;
+    for (i = 0; i < length; i += VECTOR_SIZE) {
+        v16u8 vec1 = (v16u8)_mx128_lu1q(&src[i], 0);
+        v16u8 vec2 = (v16u8)_mx128_lu1q(&dst[i], 0);
+        v16u8 vec3 = _mx128_maxu_b(vec1, vec2);
+        _mx128_su1q((v16i8)vec3, &dst[i], 0);
     }
 }
 
