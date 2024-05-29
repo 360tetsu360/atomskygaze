@@ -64,6 +64,19 @@ void buffer_div_add(uint8_t** input_list, uint8_t* out, uint8_t v, size_t length
     }
 }
 
+void buffer_max(uint8_t** input_list, uint8_t* out, size_t frame_len, size_t length) {
+    size_t i, j;
+
+    for (i = 0; i < length; i += VECTOR_SIZE) {
+        v16u8 dst = (v16u8)_mx128_li_b(0);
+        for (j = 0; j < frame_len; j++) {
+            v16u8 vec1 = (v16u8)_mx128_lu1q(&input_list[j][i], 0);
+            dst = _mx128_maxu_b(dst, vec1);
+        }
+        _mx128_su1q((v16i8)dst, &out[i], 0);
+    }
+}
+
 void fast_memcpy(uint8_t* src, uint8_t* dst, size_t length) {
     size_t i;
     for (i = 0; i < length; i += VECTOR_SIZE) {

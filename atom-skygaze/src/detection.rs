@@ -201,14 +201,15 @@ unsafe fn integrate(diff_list: &mut VecDeque<Vec<u8>>) -> Vec<u8> {
 
 unsafe fn composite(comp_list: &mut VecDeque<Vec<u8>>) -> Vec<u8> {
     // NV12 type
-    let mut res = vec![0u8; 1920 * (1080 + 540)];
+    let mut res = Vec::with_capacity(1920 * (1080 + 540));
     let frame_bufs: Vec<*const u8> = comp_list.iter().map(|buf| buf.as_ptr()).collect();
     buffer_div_add(
         frame_bufs.as_ptr(),
         res.as_mut_ptr(),
-        comp_list.len() as u8,
-        res.len(),
+        comp_list.len(),
+        1920 * (1080 + 540),
     );
+    res.set_len(1920 * (1080 + 540));
 
     res
 }
@@ -257,7 +258,7 @@ pub unsafe fn start(
             Err(_) => continue,
         };
         if app_state_tmp.detect && !last_frame.is_null() {
-            let mut diff = vec![0u8; 640 * 360];
+            let mut diff = Vec::with_capacity(640 * 360);
 
             // MXU2.0 SIMD128
             // four time faster than OpenCV absdiff().
@@ -268,15 +269,18 @@ pub unsafe fn start(
                 (img_height * img_width) as usize,
             );
 
+            diff.set_len(640 * 360);
+
             diff_list.push_back(diff);
 
             // NV12 type
-            let mut frame = vec![0u8; 1920 * (1080 + 540)];
+            let mut frame = Vec::with_capacity(1920 * (1080 + 540));
             fast_memcpy(
                 (*full_frame).virAddr as *const u8,
                 frame.as_mut_ptr(),
                 (1920 * (1080 + 540)) as usize,
             );
+            frame.set_len(1920 * (1080 + 540));
             comp_list.push_back(frame);
 
             if diff_list.len() > (app_state_tmp.fps / 5) as usize {
