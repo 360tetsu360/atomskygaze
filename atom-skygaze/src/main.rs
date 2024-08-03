@@ -36,11 +36,18 @@ mod websocket;
 mod webstream;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DetectionTime {
+    pub start: String,
+    pub end: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DetectionConfig {
     pub threshold: f64,
     pub max_roi_size: usize,
     pub length_threshold: u32,
     pub distance_threshold: f32,
+    pub detection_time: Option<DetectionTime>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -78,6 +85,7 @@ async fn main() {
                     threshold: 5.,
                     length_threshold: 10,
                     distance_threshold: 1.732,
+                    detection_time: None,
                 },
                 timestamp: false,
                 night_mode: false,
