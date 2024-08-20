@@ -4,6 +4,7 @@
 #[allow(dead_code)]
 #[allow(clippy::missing_safety_doc)]
 #[allow(clippy::useless_transmute)]
+#[allow(clippy::too_many_arguments)]
 mod wrapper;
 pub use wrapper::*;
 

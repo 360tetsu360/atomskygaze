@@ -362,6 +362,10 @@ document.getElementById("reboot").onclick = () => {
     connection.send("reboot");
 }
 
+document.getElementById("capture").onclick = () => {
+    connection.send("cap");
+}
+
 /*
 document.getElementById("det-settings").onclick = () => {
     const dialog = document.getElementById("detection-dialog");

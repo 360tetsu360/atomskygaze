@@ -56,7 +56,7 @@ index 7add48a..9ecd449 100644
 +    let workspace = env::var("GITHUB_WORKSPACE").unwrap_or("/atomskygaze".to_string());
      let bindings = bindgen::Builder::default()
          .header("minimp4.h")
-+        .clang_arg(&format!("-I{}/build/buildroot-2024.02/output/host/mipsel-ingenic-linux-gnu/sysroot/usr/include", workspace))
++        .clang_arg(format!("-I{}/build/buildroot-2024.02/output/host/mipsel-ingenic-linux-gnu/sysroot/usr/include", workspace))
 +        .clang_arg("--target=mips-unknown-linux-gnu")
          .generate()
          .expect("Unable to generate bindings");

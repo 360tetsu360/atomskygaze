@@ -4,7 +4,7 @@ set -e
 WORKSPACE=${GITHUB_WORKSPACE:-/src}
 
 OUT_DIR=$WORKSPACE/output
-[ -f $OUT_DIR ] || mkdir $OUT_DIR
+[ -f $OUT_DIR ] || mkdir -p $OUT_DIR
 
 cd output/images
 echo "atomaskygaze" > hostname

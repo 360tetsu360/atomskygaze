@@ -128,3 +128,37 @@ void fast_mean_stddev(uint8_t* src, size_t length, double* mean, double* stddev)
     _mx128_su1q((v16i8)ssd, (uint8_t*)ssd_buf, 0);
     *stddev = sqrt((ssd_buf[0] + ssd_buf[1]) / length);
 }
+
+void create_mask(const uint8_t* mask_small, uint8_t* mask) {
+    size_t x, y;
+    uint8_t buff[VECTOR_SIZE];
+    for( y = 0; y < 18; y++) {
+        for( x = 0; x < 640; x += 16) {
+            size_t mod = x % 20;
+            size_t first_index = (x / 20) + y*32;
+            size_t change_index = 20 - mod;
+            v16u8 zero = (v16u8)_mx128_mfcpu_b(0);
+            _mx128_su1q((v16i8)zero, buff, 0);
+            if(mask_small[first_index]) {
+                int i;
+                for(i=0; i < change_index; i++) {
+                    buff[i] = 1;
+                }
+            }
+            if(change_index < 16) {
+                if(mask_small[first_index+1]) {
+                    int i;
+                    for(i=change_index; i < 16; i++) {
+                        buff[i] = 1;
+                    }
+                }
+            }
+
+            int j;
+            v16i8 vec = _mx128_lu1q(buff, 0);
+            for(j = 0; j < 20; j++) {
+                _mx128_su1q(vec, &mask[x+640*(y*20+j)], 0);
+            }
+        }
+    }
+}

@@ -83,6 +83,10 @@ pub async fn handle_socket(
                 Message::Text(texta) => {
                     let text: Vec<&str> = texta.split(',').collect();
                     match text[0] {
+                        "cap" => {
+                            app_state_tmp.cap = true;
+                            drop(app_state_tmp);
+                        }
                         // Measure round trip time.
                         "time" => {
                             let now = std::time::Instant::now();

@@ -1,4 +1,5 @@
 use crate::AppState;
+use crate::SaveMsg;
 use chrono::DateTime;
 use chrono::Datelike;
 use chrono::FixedOffset;
@@ -11,10 +12,14 @@ use fitsio::FitsFile;
 use isvp_sys::*;
 use log::error;
 use minimp4::Mp4Muxer;
+use mxu::create_mask;
 use opencv::core::*;
 use opencv::imgcodecs::imencode_def;
 use opencv::imgproc::cvt_color_def;
+use opencv::imgproc::line;
+use opencv::imgproc::LineTypes;
 use opencv::imgproc::COLOR_YUV2RGB_NV21;
+use solver::*;
 use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;
@@ -23,8 +28,8 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-pub fn mp4save_loops(
-    detected_rx: mpsc::Receiver<(Vec<u8>, DateTime<FixedOffset>)>,
+pub fn record_loops(
+    detected_rx: mpsc::Receiver<SaveMsg>,
     app_state: Arc<Mutex<AppState>>,
     flag: Arc<Mutex<bool>>,
 ) {
@@ -248,48 +253,169 @@ fn sync_file(rx: mpsc::Receiver<File>) {
     }
 }
 
-fn save_detection(rx: mpsc::Receiver<(Vec<u8>, DateTime<FixedOffset>)>) {
-    while let Ok((mut frame, time)) = rx.recv() {
-        let comp = unsafe {
-            Mat::new_rows_cols_with_data_def(
-                1080 + 540,
-                1920,
-                CV_8UC1,
-                frame.as_mut_ptr() as *mut ::std::os::raw::c_void,
-            )
-            .unwrap()
-        };
+unsafe fn try_solve_field(field: &mut Vec<u8>, mask_small: &[u8]) -> Option<Solved> {
+    let mut mask_full = Vec::with_capacity(field.len());
+    create_mask(mask_small.as_ptr(), mask_full.as_mut_ptr());
 
-        let mut colored = Mat::default();
-        // Actually, it has to be NV12 but somehow this works.
-        cvt_color_def(&comp, &mut colored, COLOR_YUV2RGB_NV21).unwrap();
-        let mut jpeg_buf = Vector::<u8>::new();
-        imencode_def(".jpg", &colored, &mut jpeg_buf).unwrap();
+    let catalog = extract(field.as_mut_slice(), Some(&mask_full), 640, 360)?;
+    solve_field(catalog, true)
+}
 
-        let path = time
-            .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S.jpg")
-            .to_string();
-        let file = File::create(&path).unwrap();
-        let mut writer = BufWriter::new(file);
-        writer.write_all(jpeg_buf.as_slice()).unwrap();
-        writer.into_inner().unwrap().sync_all().unwrap();
+fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
+    while let Ok(msg) = rx.recv() {
+        match msg {
+            SaveMsg::Detection(mut msg) => {
+                let dir_path = msg
+                    .time
+                    .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S")
+                    .to_string();
 
-        let path = time
-            .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S.fits")
-            .to_string();
-        let image_description = ImageDescription {
-            data_type: ImageType::UnsignedByte,
-            dimensions: &[1080 + 540, 1920],
-        };
+                let dir = Path::new(&dir_path);
+                std::fs::create_dir(dir).unwrap();
 
-        let mut fitsfile = FitsFile::create(&path)
-            .with_custom_primary(&image_description)
-            .overwrite()
-            .open()
-            .unwrap();
+                let comp = unsafe {
+                    Mat::new_rows_cols_with_data_def(
+                        1080 + 540,
+                        1920,
+                        CV_8UC1,
+                        msg.data.as_mut_ptr() as *mut ::std::os::raw::c_void,
+                    )
+                    .unwrap()
+                };
 
-        let hdu = fitsfile.primary_hdu().unwrap();
+                let mut colored = Mat::default();
+                // Actually, it has to be NV12 but somehow this works.
+                cvt_color_def(&comp, &mut colored, COLOR_YUV2RGB_NV21).unwrap();
+                let mut jpeg_buf = Vector::<u8>::new();
+                imencode_def(".jpg", &colored, &mut jpeg_buf).unwrap();
 
-        hdu.write_image(&mut fitsfile, &frame).unwrap();
+                let path = msg
+                    .time
+                    .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S/detected.jpg")
+                    .to_string();
+                let file = File::create(&path).unwrap();
+                let mut writer = BufWriter::new(file);
+                writer.write_all(jpeg_buf.as_slice()).unwrap();
+                writer.into_inner().unwrap().sync_all().unwrap();
+
+                if msg.save_wcs {
+                    let mut field = msg.field.take().unwrap();
+                    let mask_small = msg.mask.take().unwrap();
+                    let solved_ = unsafe { try_solve_field(&mut field, &mask_small) };
+                    if let Some(wcs) = solved_ {
+                        let path = msg
+                            .time
+                            .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S/wcs.fits")
+                            .to_string();
+
+                        unsafe {
+                            wcs.save_to_file(&path);
+                        }
+
+                        if msg.draw_constellation {
+                            let star_lines = unsafe { wcs.get_constellations() };
+                            for (p1, p2) in star_lines {
+                                let pt1 = Point {
+                                    x: (p1.0 * 3.).round() as i32,
+                                    y: (p1.1.round() * 3.) as i32,
+                                };
+                                let pt2 = Point {
+                                    x: (p2.0 * 3.).round() as i32,
+                                    y: (p2.1.round() * 3.) as i32,
+                                };
+                                line(
+                                    &mut colored,
+                                    pt1,
+                                    pt2,
+                                    Scalar::new(255.0, 255.0, 255.0, 0.0),
+                                    2,
+                                    LineTypes::LINE_AA as i32,
+                                    0,
+                                )
+                                .unwrap();
+                            }
+
+                            let mut jpeg_buf = Vector::<u8>::new();
+                            imencode_def(".jpg", &colored, &mut jpeg_buf).unwrap();
+
+                            let path = msg
+                                .time
+                                .format(
+                                    "/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S/anotated.jpg",
+                                )
+                                .to_string();
+                            let file = File::create(&path).unwrap();
+                            let mut writer = BufWriter::new(file);
+                            writer.write_all(jpeg_buf.as_slice()).unwrap();
+                            writer.into_inner().unwrap().sync_all().unwrap();
+                        }
+                    }
+                }
+
+                let path = msg
+                    .time
+                    .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S/detected.fits")
+                    .to_string();
+                let image_description = ImageDescription {
+                    data_type: ImageType::UnsignedByte,
+                    dimensions: &[1080 + 540, 1920],
+                };
+
+                let mut fitsfile = FitsFile::create(&path)
+                    .with_custom_primary(&image_description)
+                    .overwrite()
+                    .open()
+                    .unwrap();
+
+                let hdu = fitsfile.primary_hdu().unwrap();
+
+                hdu.write_image(&mut fitsfile, &msg.data).unwrap();
+            }
+            SaveMsg::Capture(mut msg) => {
+                let comp = unsafe {
+                    Mat::new_rows_cols_with_data_def(
+                        1080 + 540,
+                        1920,
+                        CV_8UC1,
+                        msg.data.as_mut_ptr() as *mut ::std::os::raw::c_void,
+                    )
+                    .unwrap()
+                };
+
+                let mut colored = Mat::default();
+                // Actually, it has to be NV12 but somehow this works.
+                cvt_color_def(&comp, &mut colored, COLOR_YUV2RGB_NV21).unwrap();
+                let mut jpeg_buf = Vector::<u8>::new();
+                imencode_def(".jpg", &colored, &mut jpeg_buf).unwrap();
+
+                let path = msg
+                    .time
+                    .format("/media/mmc/records/capture/%Y-%m-%d_%H_%M_%S.jpg")
+                    .to_string();
+                let file = File::create(&path).unwrap();
+                let mut writer = BufWriter::new(file);
+                writer.write_all(jpeg_buf.as_slice()).unwrap();
+                writer.into_inner().unwrap().sync_all().unwrap();
+
+                let path = msg
+                    .time
+                    .format("/media/mmc/records/capture/%Y-%m-%d_%H_%M_%S.fits")
+                    .to_string();
+                let image_description = ImageDescription {
+                    data_type: ImageType::UnsignedByte,
+                    dimensions: &[1080 + 540, 1920],
+                };
+
+                let mut fitsfile = FitsFile::create(&path)
+                    .with_custom_primary(&image_description)
+                    .overwrite()
+                    .open()
+                    .unwrap();
+
+                let hdu = fitsfile.primary_hdu().unwrap();
+
+                hdu.write_image(&mut fitsfile, &msg.data).unwrap();
+            }
+        }
     }
 }

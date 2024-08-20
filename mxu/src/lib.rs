@@ -31,4 +31,6 @@ extern "C" {
 
     /// sum, squared sum
     pub fn fast_mean_stddev(src: *const u8, length: usize, mean: *mut f64, stddev: *mut f64);
+
+    pub fn create_mask(mask_small: *const u8, mask: *mut u8);
 }
