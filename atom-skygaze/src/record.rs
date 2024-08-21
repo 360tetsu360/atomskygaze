@@ -33,16 +33,9 @@ pub fn record_loops(
     app_state: Arc<Mutex<AppState>>,
     flag: Arc<Mutex<bool>>,
 ) {
-    let (tx, rx) = mpsc::channel();
-
     thread::Builder::new()
         .name("h264_loop".to_string())
-        .spawn(move || unsafe { get_h264_stream(tx, app_state, flag) })
-        .unwrap();
-
-    thread::Builder::new()
-        .name("filesave_loop".to_string())
-        .spawn(move || sync_file(rx))
+        .spawn(move || unsafe { get_h264_stream(app_state, flag) })
         .unwrap();
 
     thread::Builder::new()
@@ -52,7 +45,6 @@ pub fn record_loops(
 }
 
 unsafe fn get_h264_stream(
-    tx: mpsc::Sender<File>,
     app_state: Arc<Mutex<AppState>>,
     flag: Arc<Mutex<bool>>,
 ) -> bool {
@@ -242,15 +234,7 @@ unsafe fn get_h264_stream(
             }
         }
 
-        let file = mp4muxer.close();
-        tx.send(file).unwrap();
-    }
-}
-
-fn sync_file(rx: mpsc::Receiver<File>) {
-    while let Ok(file) = rx.recv() {
-        file.sync_all().unwrap();
-        println!("Saved mp4");
+        mp4muxer.close();
     }
 }
 
