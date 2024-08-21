@@ -328,11 +328,11 @@ pub async fn handle_socket(
                     val = log_rx.changed() => {
                         if val.is_ok() {
                             let msg = match log_rx.borrow_and_update().clone() {
-                                LogType::Detection(timestamp, mp4path) => {
+                                LogType::Detection(timestamp, img_path) => {
                                     format!(
                                         "{{\"type\":\"detected\",\"payload\":{{\"timestamp\":\"{}\",\"saved_file\":\"{}\"}}}}",
                                         timestamp,
-                                        mp4path
+                                        img_path
                                     )
                                 },
                                 _ => "".to_string(),

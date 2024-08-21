@@ -209,9 +209,9 @@ pub unsafe fn imp_osd_start(
             timestamp_data.fill(0);
             let now: DateTime<Utc> = Utc::now();
             let offset = if app_state_tmp.timezone < 0 {
-                FixedOffset::west_opt(-app_state_tmp.timezone)
+                FixedOffset::west_opt(-app_state_tmp.timezone * 3600)
             } else {
-                FixedOffset::east_opt(app_state_tmp.timezone)
+                FixedOffset::east_opt(app_state_tmp.timezone * 3600)
             }
             .unwrap();
             let time: DateTime<FixedOffset> = now.with_timezone(&offset);

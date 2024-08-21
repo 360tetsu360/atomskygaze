@@ -28,8 +28,6 @@ case "$1" in
       mkdir -p /media/mmc/records/capture
     fi
 
-    /media/mmc/mask
-
     if [ -f /media/mmc/atom-skygaze ]; then
       /media/mmc/atom-skygaze &
     else

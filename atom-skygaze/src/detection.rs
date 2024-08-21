@@ -1,10 +1,10 @@
+use crate::AppState;
+use crate::LogType;
 use chrono::*;
 use isvp_sys::*;
 use log::error;
-use opencv::core::*;
-use crate::AppState;
-use crate::LogType;
 use mxu::*;
+use opencv::core::*;
 use opencv::prelude::FastLineDetectorTrait;
 use opencv::ximgproc::create_fast_line_detector;
 use std::collections::VecDeque;
@@ -239,8 +239,15 @@ pub unsafe fn start(
     let mut diff_list = VecDeque::<Vec<u8>>::with_capacity(10);
     let mut comp_list = VecDeque::<Vec<u8>>::with_capacity(10);
     let mut stack_frame: Option<Vec<u8>> = None;
-    let mut detection_start: DateTime<FixedOffset> =
-        Utc::now().with_timezone(&FixedOffset::east_opt(9 * 3600).unwrap());
+    let app_state_tmp = app_state.lock().unwrap();
+    let offset = if app_state_tmp.timezone < 0 {
+        FixedOffset::west_opt(-app_state_tmp.timezone * 3600)
+    } else {
+        FixedOffset::east_opt(app_state_tmp.timezone * 3600)
+    }.unwrap();
+    let mut detection_start: DateTime<FixedOffset> = Utc::now().with_timezone(&offset);
+
+    drop(app_state_tmp);
 
     let mut file = OpenOptions::new()
         .append(true)
@@ -277,9 +284,9 @@ pub unsafe fn start(
             app_state_tmp.cap = false;
             let now: DateTime<Utc> = Utc::now();
             let offset = if app_state_tmp.timezone < 0 {
-                FixedOffset::west_opt(-app_state_tmp.timezone)
+                FixedOffset::west_opt(-app_state_tmp.timezone * 3600)
             } else {
-                FixedOffset::east_opt(app_state_tmp.timezone)
+                FixedOffset::east_opt(app_state_tmp.timezone * 3600)
             }
             .unwrap();
 
@@ -291,7 +298,9 @@ pub unsafe fn start(
                 1920 * (1080 + 540),
             );
 
-            sender.send(SaveMsg::Capture(CaptureMsg { data: frame, time })).unwrap();
+            sender
+                .send(SaveMsg::Capture(CaptureMsg { data: frame, time }))
+                .unwrap();
         }
         if app_state_tmp.detect && !last_frame.is_null() {
             let mut diff = Vec::with_capacity(640 * 360);
@@ -371,9 +380,9 @@ pub unsafe fn start(
                     if !lines.is_empty() {
                         let now: DateTime<Utc> = Utc::now();
                         let offset = if app_state_tmp.timezone < 0 {
-                            FixedOffset::west_opt(-app_state_tmp.timezone)
+                            FixedOffset::west_opt(-app_state_tmp.timezone * 3600)
                         } else {
-                            FixedOffset::east_opt(app_state_tmp.timezone)
+                            FixedOffset::east_opt(app_state_tmp.timezone * 3600)
                         }
                         .unwrap();
 
@@ -440,7 +449,9 @@ pub unsafe fn start(
                         fractional_second as i32
                     );
 
-                    let jpgpath = detection_start.format("%Y-%m-%d_%H_%M_%S.jpg").to_string();
+                    let jpgpath = detection_start
+                        .format("%Y-%m-%d_%H_%M_%S/detected.jpg")
+                        .to_string();
 
                     let log = LogType::Detection(timestamp, jpgpath);
 

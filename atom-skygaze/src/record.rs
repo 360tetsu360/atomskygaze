@@ -78,9 +78,9 @@ unsafe fn get_h264_stream(
         };
         let now: DateTime<Utc> = Utc::now();
         let offset = if app_state_tmp.timezone < 0 {
-            FixedOffset::west_opt(-app_state_tmp.timezone)
+            FixedOffset::west_opt(-app_state_tmp.timezone * 3600)
         } else {
-            FixedOffset::east_opt(app_state_tmp.timezone)
+            FixedOffset::east_opt(app_state_tmp.timezone * 3600)
         }
         .unwrap();
         let current_time: DateTime<FixedOffset> = now.with_timezone(&offset);
@@ -132,6 +132,7 @@ unsafe fn get_h264_stream(
         let file = File::create(mp4path).unwrap();
         let mut mp4muxer = Mp4Muxer::new(file);
         mp4muxer.init_video(1920, 1080, true, &mp4title);
+        IMP_Encoder_RequestIDR(3);
 
         loop {
             let app_state_tmp = match app_state.lock() {
@@ -140,9 +141,9 @@ unsafe fn get_h264_stream(
             };
             let now: DateTime<Utc> = Utc::now();
             let offset = if app_state_tmp.timezone < 0 {
-                FixedOffset::west_opt(-app_state_tmp.timezone)
+                FixedOffset::west_opt(-app_state_tmp.timezone * 3600)
             } else {
-                FixedOffset::east_opt(app_state_tmp.timezone)
+                FixedOffset::east_opt(app_state_tmp.timezone * 3600)
             }
             .unwrap();
             let current_time: DateTime<FixedOffset> = now.with_timezone(&offset);
