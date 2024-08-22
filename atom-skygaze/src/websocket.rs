@@ -4,6 +4,7 @@ use crate::config::AtomConfig;
 use crate::gpio::*;
 use crate::system;
 use crate::AppState;
+use crate::DetectionTime;
 use axum::extract::{
     ws::{Message, WebSocket},
     State, WebSocketUpgrade,
@@ -281,8 +282,7 @@ pub async fn handle_socket(
                             }
                         }
                         "sync" => {
-                            if text.len() == 4 {
-                                app_state_tmp.timezone = text[3].parse().unwrap();
+                            if text.len() == 3 {
                                 drop(app_state_tmp);
                                 let new_time = timeval {
                                     tv_sec: text[1].parse().unwrap(),
@@ -299,6 +299,37 @@ pub async fn handle_socket(
                                         println!("Failed to set system time");
                                     }
                                 }
+                            }
+                        }
+                        "tz" => {
+                            if text.len() == 2 {
+                                app_state_tmp.timezone = text[1].parse().unwrap();
+                                drop(app_state_tmp);
+                            }
+                        }
+                        "det-time" => {
+                            if text.len() == 4 {
+                                app_state_tmp.detection_config.use_time = text[1].parse().unwrap();
+
+                                let start = parse_time(text[2]);
+                                let end = parse_time(text[3]);
+                                if let (Some(st_time), Some(ed_time)) = (start, end) {
+                                    app_state_tmp.detection_config.detection_time = DetectionTime {
+                                        start: st_time,
+                                        end: ed_time,
+                                    };
+                                }
+                                drop(app_state_tmp);
+                            }
+                        }
+                        "solve" => {
+                            if text.len() == 4 {
+                                app_state_tmp.detection_config.solve_field =
+                                    text[1].parse().unwrap();
+                                app_state_tmp.detection_config.save_wcs = text[2].parse().unwrap();
+                                app_state_tmp.detection_config.draw_constellation =
+                                    text[3].parse().unwrap();
+                                drop(app_state_tmp);
                             }
                         }
                         "reboot" => {
@@ -385,4 +416,14 @@ pub async fn handle_socket(
         }
         _ = sender.close();
     });
+}
+
+fn parse_time(time_str: &str) -> Option<(u32, u32)> {
+    let parts: Vec<&str> = time_str.split(':').collect();
+    if parts.len() == 2 {
+        if let (Ok(hours), Ok(minutes)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
+            return Some((hours, minutes));
+        }
+    }
+    None
 }

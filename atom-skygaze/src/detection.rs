@@ -210,6 +210,19 @@ unsafe fn composite(comp_list: &mut VecDeque<Vec<u8>>) -> Vec<u8> {
     res
 }
 
+fn is_within_time_range(now: DateTime<FixedOffset>, start: (u32, u32), end: (u32, u32)) -> bool {
+    let current_minutes = now.hour() * 60 + now.minute();
+
+    let start_minutes = start.0 * 60 + start.1;
+    let end_minutes = end.0 * 60 + end.1;
+
+    if start_minutes <= end_minutes {
+        current_minutes >= start_minutes && current_minutes <= end_minutes
+    } else {
+        current_minutes >= start_minutes || current_minutes <= end_minutes
+    }
+}
+
 pub enum SaveMsg {
     Detection(DetectionMsg),
     Capture(CaptureMsg),
@@ -218,9 +231,10 @@ pub enum SaveMsg {
 pub struct DetectionMsg {
     pub data: Vec<u8>,
     pub time: DateTime<FixedOffset>,
-    pub save_wcs: bool,
+    pub solve_field: bool,
     pub field: Option<Vec<u8>>,
     pub mask: Option<Vec<u8>>,
+    pub save_wcs: bool,
     pub draw_constellation: bool,
 }
 
@@ -241,10 +255,11 @@ pub unsafe fn start(
     let mut stack_frame: Option<Vec<u8>> = None;
     let app_state_tmp = app_state.lock().unwrap();
     let offset = if app_state_tmp.timezone < 0 {
-        FixedOffset::west_opt(-app_state_tmp.timezone * 3600)
+        FixedOffset::west_opt(-app_state_tmp.timezone)
     } else {
-        FixedOffset::east_opt(app_state_tmp.timezone * 3600)
-    }.unwrap();
+        FixedOffset::east_opt(app_state_tmp.timezone)
+    }
+    .unwrap();
     let mut detection_start: DateTime<FixedOffset> = Utc::now().with_timezone(&offset);
 
     drop(app_state_tmp);
@@ -282,15 +297,14 @@ pub unsafe fn start(
         };
         if app_state_tmp.cap {
             app_state_tmp.cap = false;
-            let now: DateTime<Utc> = Utc::now();
             let offset = if app_state_tmp.timezone < 0 {
-                FixedOffset::west_opt(-app_state_tmp.timezone * 3600)
+                FixedOffset::west_opt(-app_state_tmp.timezone)
             } else {
-                FixedOffset::east_opt(app_state_tmp.timezone * 3600)
+                FixedOffset::east_opt(app_state_tmp.timezone)
             }
             .unwrap();
 
-            let time: DateTime<FixedOffset> = now.with_timezone(&offset);
+            let time: DateTime<FixedOffset> = Utc::now().with_timezone(&offset);
             let mut frame = Vec::with_capacity(1920 * (1080 + 540));
             fast_memcpy(
                 (*full_frame).virAddr as *const u8,
@@ -302,7 +316,22 @@ pub unsafe fn start(
                 .send(SaveMsg::Capture(CaptureMsg { data: frame, time }))
                 .unwrap();
         }
-        if app_state_tmp.detect && !last_frame.is_null() {
+
+        let is_detect_time = if app_state_tmp.detection_config.use_time {
+            let det_time = app_state_tmp.detection_config.detection_time;
+            let offset = if app_state_tmp.timezone < 0 {
+                FixedOffset::west_opt(-app_state_tmp.timezone)
+            } else {
+                FixedOffset::east_opt(app_state_tmp.timezone)
+            }
+            .unwrap();
+            let now = Utc::now().with_timezone(&offset);
+            is_within_time_range(now, det_time.start, det_time.end)
+        } else {
+            false
+        };
+
+        if app_state_tmp.detect && !last_frame.is_null() && is_detect_time {
             let mut diff = Vec::with_capacity(640 * 360);
 
             // MXU2.0 SIMD128
@@ -378,15 +407,14 @@ pub unsafe fn start(
                     fld.detect(&cropped, &mut lines).unwrap();
 
                     if !lines.is_empty() {
-                        let now: DateTime<Utc> = Utc::now();
                         let offset = if app_state_tmp.timezone < 0 {
-                            FixedOffset::west_opt(-app_state_tmp.timezone * 3600)
+                            FixedOffset::west_opt(-app_state_tmp.timezone)
                         } else {
-                            FixedOffset::east_opt(app_state_tmp.timezone * 3600)
+                            FixedOffset::east_opt(app_state_tmp.timezone)
                         }
                         .unwrap();
 
-                        let time: DateTime<FixedOffset> = now.with_timezone(&offset);
+                        let time: DateTime<FixedOffset> = Utc::now().with_timezone(&offset);
                         if detecting_flag == 0 {
                             stack_frame = Some(composite(&mut comp_list));
                             detection_start = time;
@@ -418,7 +446,10 @@ pub unsafe fn start(
                     //sender.send(None).unwrap();
                     println!("saving detection");
 
-                    let (field, mask) = if app_state_tmp.detection_config.save_wcs {
+                    let (field, mask) = if app_state_tmp.detection_config.solve_field
+                        && (app_state_tmp.detection_config.save_wcs
+                            || app_state_tmp.detection_config.draw_constellation)
+                    {
                         let field = from_raw_parts(
                             (*last_frame).virAddr as *const u8,
                             (img_width * img_height) as usize,
@@ -434,9 +465,10 @@ pub unsafe fn start(
                         .send(SaveMsg::Detection(DetectionMsg {
                             data: stack_frame.take().unwrap(),
                             time: detection_start,
-                            save_wcs: app_state_tmp.detection_config.save_wcs,
+                            solve_field: app_state_tmp.detection_config.solve_field,
                             field,
                             mask,
+                            save_wcs: app_state_tmp.detection_config.save_wcs,
                             draw_constellation: app_state_tmp.detection_config.draw_constellation,
                         }))
                         .unwrap();

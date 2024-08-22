@@ -44,10 +44,7 @@ pub fn record_loops(
         .unwrap();
 }
 
-unsafe fn get_h264_stream(
-    app_state: Arc<Mutex<AppState>>,
-    flag: Arc<Mutex<bool>>,
-) -> bool {
+unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>>) -> bool {
     if IMP_Encoder_StartRecvPic(3) < 0 {
         error!("IMP_Encoder_StartRecvPic failed");
         return false;
@@ -70,9 +67,9 @@ unsafe fn get_h264_stream(
         };
         let now: DateTime<Utc> = Utc::now();
         let offset = if app_state_tmp.timezone < 0 {
-            FixedOffset::west_opt(-app_state_tmp.timezone * 3600)
+            FixedOffset::west_opt(app_state_tmp.timezone)
         } else {
-            FixedOffset::east_opt(app_state_tmp.timezone * 3600)
+            FixedOffset::east_opt(app_state_tmp.timezone)
         }
         .unwrap();
         let current_time: DateTime<FixedOffset> = now.with_timezone(&offset);
@@ -133,9 +130,9 @@ unsafe fn get_h264_stream(
             };
             let now: DateTime<Utc> = Utc::now();
             let offset = if app_state_tmp.timezone < 0 {
-                FixedOffset::west_opt(-app_state_tmp.timezone * 3600)
+                FixedOffset::west_opt(-app_state_tmp.timezone)
             } else {
-                FixedOffset::east_opt(app_state_tmp.timezone * 3600)
+                FixedOffset::east_opt(app_state_tmp.timezone)
             }
             .unwrap();
             let current_time: DateTime<FixedOffset> = now.with_timezone(&offset);
@@ -283,18 +280,20 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
                 writer.write_all(jpeg_buf.as_slice()).unwrap();
                 writer.into_inner().unwrap().sync_all().unwrap();
 
-                if msg.save_wcs {
+                if msg.solve_field && (msg.save_wcs || msg.draw_constellation) {
                     let mut field = msg.field.take().unwrap();
                     let mask_small = msg.mask.take().unwrap();
                     let solved_ = unsafe { try_solve_field(&mut field, &mask_small) };
                     if let Some(wcs) = solved_ {
-                        let path = msg
-                            .time
-                            .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S/wcs.fits")
-                            .to_string();
+                        if msg.save_wcs {
+                            let path = msg
+                                .time
+                                .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S/wcs.fits")
+                                .to_string();
 
-                        unsafe {
-                            wcs.save_to_file(&path);
+                            unsafe {
+                                wcs.save_to_file(&path);
+                            }
                         }
 
                         if msg.draw_constellation {

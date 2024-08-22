@@ -35,19 +35,21 @@ mod system;
 mod websocket;
 mod webstream;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct DetectionTime {
-    pub start: String,
-    pub end: String,
+    pub start: (u32, u32),
+    pub end: (u32, u32),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct DetectionConfig {
     pub threshold: f64,
     pub max_roi_size: usize,
     pub length_threshold: u32,
     pub distance_threshold: f32,
-    pub detection_time: Option<DetectionTime>,
+    pub use_time: bool,
+    pub detection_time: DetectionTime,
+    pub solve_field: bool,
     pub save_wcs: bool,
     pub draw_constellation: bool,
 }
@@ -88,11 +90,16 @@ async fn main() {
                     threshold: 5.,
                     length_threshold: 10,
                     distance_threshold: 1.732,
-                    detection_time: None,
+                    use_time: false,
+                    detection_time: DetectionTime {
+                        start: (18, 0),
+                        end: (6, 0),
+                    },
+                    solve_field: false,
                     save_wcs: false,
                     draw_constellation: false,
                 },
-                timestamp: false,
+                timestamp: true,
                 night_mode: false,
                 ircut_on: false,
                 led_on: true,
@@ -103,7 +110,7 @@ async fn main() {
                 contrast: 128,
                 sharpness: 128,
                 saturation: 128,
-                timezone: 9,
+                timezone: 9 * 3600,
                 cap: false,
                 logs: vec![],
             };

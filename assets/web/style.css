@@ -281,6 +281,14 @@ dialog::backdrop {
     background-color: #4caf50; 
 }
 
+.toggle input:disabled + .slider {
+    background-color: var(--c-line);;
+}
+
+.toggle input:disabled + .slider::before {
+    background-color: var(--c-font-dark);; 
+}
+
 .toggle input:checked + .slider::before {
     transform: translateX(24px); 
 }
