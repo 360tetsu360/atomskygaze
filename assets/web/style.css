@@ -423,3 +423,13 @@ select:focus {
     border-color: #3498db;
     outline: none;
 }
+
+.beta-block {
+    background-color: #15ff005e;
+    color: white;
+    font-weight: normal;
+    font-size: 16px;
+    padding: 1px 20px;
+    display: inline-block;
+    border-radius: 5px;
+}
