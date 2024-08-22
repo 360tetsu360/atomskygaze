@@ -4,6 +4,7 @@ members = [
     "atom-skygaze",
     "isvp-sys",
     "mxu",
+    "solver"
 ]
 
 [patch.crates-io]

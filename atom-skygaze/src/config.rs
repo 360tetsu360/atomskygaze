@@ -68,6 +68,7 @@ pub async fn load_from_file() -> std::io::Result<AppState> {
         sharpness: app_config.sharpness,
         saturation: app_config.saturation,
         timezone: app_config.timezone,
+        cap: false,
         logs: vec![],
     })
 }

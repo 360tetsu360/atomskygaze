@@ -106,6 +106,12 @@ connection.onerror = function(error) {
     console.log(error);
 };
 
+function format_time(time) {
+    let h_str = time[0].toString().padStart( 2, '0');
+    let m_str = time[1].toString().padStart( 2, '0');
+    return `${h_str}:${m_str}`
+}
+
 var prev = document.getElementById("prev");
 var prev_dialog = document.getElementById("prev-dialog-prev");
 var blob = null;
@@ -175,6 +181,34 @@ connection.onmessage = function(event) {
             document.getElementById("shrp-value").textContent = `${app_state.sharpness}`;
             document.getElementById("sat-range").value = app_state.saturation;
             document.getElementById("sat-value").textContent = `${app_state.saturation}`;
+            document.getElementById("det-mode").value = app_state.detection_config.detection_time != null;
+            if (app_state.detection_config.detection_time != null) {
+                let start_time = app_state.detection_config.detection_time.start;
+                let end_time = app_state.detection_config.detection_time.end;
+                document.getElementById("start-time").value = format_time(start_time);
+                document.getElementById("end-time").value = format_time(end_time);
+            }
+            let show_time = document.getElementById("det-mode").checked;
+            document.getElementById("det-time-panel").style.display = show_time ? "" : "none";
+            document.getElementById("det-time-title").style.display = show_time ? "none" : "";
+            document.getElementById("det-mode-sub").checked = show_time;
+
+            console.log(app_state.detection_config);
+            document.getElementById("det-ana").checked = app_state.detection_config.solve_field;
+            document.getElementById("wcs").checked = app_state.detection_config.save_wcs;
+            document.getElementById("const").checked = app_state.detection_config.draw_constellation;
+            let show = document.getElementById("det-ana").checked;
+            document.getElementById("det-ana-panel").style.display = show ? "" : "none";
+            document.getElementById("det-ana-title").style.display = show ? "none" : "";
+            document.getElementById("det-ana-sub").checked = show;
+            let offset = app_state.timezone;
+            var select = document.getElementById("tzselect");
+            for (var j = 0; j < select.options.length; j++) {
+                if (select.options[j].value == offset) {
+                    select.options[j].selected = true;
+                    break;
+                }
+            }
 
             for (const log_item of app_state.logs) {
                 console.log(log_item);
@@ -248,11 +282,15 @@ function update_time() {
 setInterval('update_time()',500);
 
 document.getElementById("sync").onclick = () => {
-    var timezone = document.getElementById("tzselect").value;
     var now = (new Date().valueOf() / 1000).toFixed(2);
     const secs = Math.floor(now);
     const millis = Math.floor((now - secs) * 1000);
-    connection.send(`sync,${secs},${millis},${timezone}`);
+    connection.send(`sync,${secs},${millis}`);
+}
+
+document.getElementById("tzselect").onchange = () => {
+    var timezone = document.getElementById("tzselect").value;
+    connection.send(`tz,${timezone}`);
 }
 
 document.getElementById("wifi-settings").onclick = () => {
@@ -362,12 +400,14 @@ document.getElementById("reboot").onclick = () => {
     connection.send("reboot");
 }
 
-/*
+document.getElementById("capture").onclick = () => {
+    connection.send("cap");
+}
+
 document.getElementById("det-settings").onclick = () => {
     const dialog = document.getElementById("detection-dialog");
     dialog.showModal();
 }
-*/
 
 document.getElementById("detection-dialog-close").onclick = () => {
     const dialog = document.getElementById("detection-dialog");
@@ -409,7 +449,7 @@ document.getElementById("ap-mode").onchange= () => {
 }
 
 document.getElementById("app-net").onclick = () => {
-    if (confirm("This connection is not secure. Do you still want to send it?\nこの接続は盗聴される恐れがあります。それでも送信しますか?\n\nヒント:より安全に設定する場合はSDカードのatom_config.tomlを変更してください。")) {
+    if (confirm("This connection is not secure. Do you still want to send it?\nこの接続は保護されていません。それでも送信しますか?\n\nヒント:より安全に設定する場合はSDカードのatom_config.tomlを変更してください。")) {
         let ap_mode = document.getElementById("ap-mode").checked;
         let ssid = document.getElementById("ssid").value;
         let psk = document.getElementById("psk").value;
@@ -421,6 +461,42 @@ document.getElementById("app-net").onclick = () => {
     } else {
 
     }
+}
+
+document.getElementById("det-mode").onchange= () => {
+    let start = document.getElementById("start-time").value;
+    let end = document.getElementById("end-time").value;
+    let use_time = document.getElementById("det-mode").checked;
+    document.getElementById("det-time-panel").style.display = use_time ? "" : "none";
+    document.getElementById("det-time-title").style.display = use_time ? "none" : "";
+    document.getElementById("det-mode-sub").checked = use_time;
+    connection.send(`det-time,${use_time},${start == "" ? "null" : start},${end == "" ? "null" : end}`);
+}
+
+document.getElementById("det-ana").onchange= () => {
+    let solve = document.getElementById("det-ana").checked;
+    let wcs = document.getElementById("wcs").checked;
+    let constellation = document.getElementById("const").checked;
+    document.getElementById("det-ana-panel").style.display = solve ? "" : "none";
+    document.getElementById("det-ana-title").style.display = solve ? "none" : "";
+    document.getElementById("det-ana-sub").checked = solve;
+    console.log(`solve,${solve},${wcs},${constellation}`)
+    connection.send(`solve,${solve},${wcs},${constellation}`);
+}
+
+document.getElementById("app-det").onclick = () => {
+    let start = document.getElementById("start-time").value;
+    let end = document.getElementById("end-time").value;
+    let use_time = document.getElementById("det-mode").checked;
+    connection.send(`det-time,${use_time},${start == "" ? "null" : start},${end == "" ? "null" : end}`);
+}
+
+document.getElementById("app-det-ana").onclick = () => {
+    let solve = document.getElementById("det-ana").checked;
+    let wcs = document.getElementById("wcs").checked;
+    let constellation = document.getElementById("const").checked;
+    console.log(`solve,${solve},${wcs},${constellation}`)
+    connection.send(`solve,${solve},${wcs},${constellation}`);
 }
 
 const ranges = document.querySelectorAll('input[type="range"]');
@@ -456,14 +532,6 @@ function timezoneSelect(){
       option.value = tz.value
       option.appendChild(document.createTextNode(tz.label))
       select.appendChild(option)
-    }
-
-    var offset = (new Date().getTimezoneOffset()) * (-60);
-    for (var j = 0; j < select.options.length; j++) {
-        if (select.options[j].value == offset) {
-            select.options[j].selected = true;
-            break;
-        }
     }
 
     return select;

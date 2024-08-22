@@ -35,12 +35,23 @@ mod system;
 mod websocket;
 mod webstream;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub struct DetectionTime {
+    pub start: (u32, u32),
+    pub end: (u32, u32),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct DetectionConfig {
     pub threshold: f64,
     pub max_roi_size: usize,
     pub length_threshold: u32,
     pub distance_threshold: f32,
+    pub use_time: bool,
+    pub detection_time: DetectionTime,
+    pub solve_field: bool,
+    pub save_wcs: bool,
+    pub draw_constellation: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -60,6 +71,7 @@ pub struct AppState {
     pub sharpness: u8,
     pub saturation: u8,
     pub timezone: i32,
+    pub cap: bool,
     pub logs: Vec<LogType>,
 }
 
@@ -78,8 +90,16 @@ async fn main() {
                     threshold: 5.,
                     length_threshold: 10,
                     distance_threshold: 1.732,
+                    use_time: false,
+                    detection_time: DetectionTime {
+                        start: (18, 0),
+                        end: (6, 0),
+                    },
+                    solve_field: false,
+                    save_wcs: false,
+                    draw_constellation: false,
                 },
-                timestamp: false,
+                timestamp: true,
                 night_mode: false,
                 ircut_on: false,
                 led_on: true,
@@ -90,7 +110,8 @@ async fn main() {
                 contrast: 128,
                 sharpness: 128,
                 saturation: 128,
-                timezone: 9,
+                timezone: 9 * 3600,
+                cap: false,
                 logs: vec![],
             };
             save_to_file(app_state.clone()).await.unwrap();
@@ -207,7 +228,7 @@ async fn main() {
             })
             .unwrap();
 
-        mp4save_loops(detected_rx, app_state_common_instance2, flag2);
+        record_loops(detected_rx, app_state_common_instance2, flag2);
 
         thread::Builder::new()
             .name("jpeg_loop".to_string())
@@ -224,7 +245,7 @@ async fn main() {
             .unwrap();
     };
 
-    let assets_dir = PathBuf::from("/media/mmc/assets/");
+    let assets_dir = PathBuf::from("/media/mmc/assets/web/");
 
     let flag = shutdown_flag.clone();
     let app = Router::new()

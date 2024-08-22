@@ -1,0 +1,5 @@
+#include "astrometry/engine.h"
+#include "astrometry/starxy.h"
+#include "astrometry/sip-utils.h"
+#include "astrometry/sip_qfits.h"
+#include "sep.h"

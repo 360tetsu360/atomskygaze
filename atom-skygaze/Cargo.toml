@@ -1,6 +1,6 @@
 [package]
 name = "atom-skygaze"
-version = "0.1.3"
+version = "0.2.0-beta"
 edition = "2021"
 authors = ["tmmgq"]
 
@@ -22,9 +22,9 @@ futures = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 minimp4 = { path = "../submodules/minimp4.rs/packages/minimp4" }
 chrono = "0.4.37"
-lz4 = "1.24"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8.12"
 tokio-util = { version = "0.7.10", features = ["io"] }
 libc = "0.2.154"
+solver = { path = "../solver" }

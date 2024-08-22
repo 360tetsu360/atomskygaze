@@ -5,7 +5,7 @@ use isvp_sys::*;
 use log::error;
 use std::sync::{Arc, Mutex};
 
-const TEXT_LENGTH: usize = 50;
+const TEXT_LENGTH: usize = 60;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 static mut FONT_HANDLE: i32 = 0;
 static mut GRP_NUM: i32 = 0;
@@ -171,6 +171,7 @@ pub unsafe fn imp_osd_start(
 ) {
     let mut timestamp_data = vec![0u8; TEXT_LENGTH * 14 * 14];
     let mut last_state = true;
+    let uppercase_ver = VERSION.to_uppercase();
 
     if !imp_osd_show(grp_num, font_handle, 1) {
         error!("OSD show error");
@@ -221,7 +222,7 @@ pub unsafe fn imp_osd_start(
                 time.format("%Y-%m-%d %H:%M:%S"),
                 fractional_second as i32,
                 time.format("%:z"),
-                VERSION
+                uppercase_ver
             );
 
             for (i, c) in text.chars().enumerate() {

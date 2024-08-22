@@ -10,7 +10,7 @@
     </head>
     <body>
         <header>
-            ATOM-SKYGAZE v0.1.3
+            ATOM-SKYGAZE v0.2.0-beta
         </header>
         <dialog id="wifi-dialog" class="dialog">
             <div class="control-panel">
@@ -55,12 +55,12 @@
                     Device
                     <p id="dev-time"></p>
                 </div>
-                <div class="one-line-sub" id="timezone">
-                    Timezone
-                </div>
                 <div class="one-line-sub">
                     Synchronize Time
                     <button id="sync" class="button">Sync</button>
+                </div>
+                <div class="one-line-sub" id="timezone">
+                    Timezone
                 </div>
             </div>
             <div class="control-panel">
@@ -94,15 +94,76 @@
                     <button id="detection-dialog-close" class="dialog-close">X</button>
                 </div>
             </div>
-            <div class="control-panel">
-                Detection Time
+            <div class="control-panel" id="det-time-title">
+                <div class="one-line">
+                    Enable Time Filter
+                    <label class="toggle" for="det-mode">
+                        <input type="checkbox" id="det-mode">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="control-panel" id="det-time-panel" style="display: none;">
+                <div class="one-line">
+                    Enable Time Filter
+                    <label class="toggle" for="det-mode">
+                        <input type="checkbox" id="det-mode-sub">
+                        <span class="slider"></span>
+                    </label>
+                </div>
                 <div class="one-line-sub">
-                    <label for="start-time">Start</label>
+                    <label for="start-time">Detection Start (night)</label>
                     <input type="time" id="start-time" name="start-time" class="time-input">
                 </div>
                 <div class="one-line-sub">
-                    <label for="start-time">End</label>
-                    <input type="time" id="end-time" name="start-time" class="time-input">
+                    <label for="end-time">Detection End (morning)</label>
+                    <input type="time" id="end-time" name="end-time" class="time-input">
+                </div>
+                <div class="one-line-sub">
+                    Apply
+                    <button id="app-det" class="button">Apply</button>
+                </div>
+            </div>
+            <div class="control-panel" id="det-ana-title">
+                <div class="one-line">
+                    <div>
+                        Meteor Analysis
+                        <div class="beta-block">BETA</div>
+                    </div>
+                    <label class="toggle" for="det-ana">
+                        <input type="checkbox" id="det-ana">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="control-panel" id="det-ana-panel" style="display: none;">
+                <div class="one-line">
+                    <div>
+                        Meteor Analysis
+                        <div class="beta-block">BETA</div>
+                    </div>
+                    <label class="toggle" for="det-ana">
+                        <input type="checkbox" id="det-ana-sub">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="one-line-sub">
+                    Save WCS
+                    <label class="toggle" for="wcs">
+                        <input type="checkbox" id="wcs">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="one-line-sub">
+                    Save Annotated Image
+                    <label class="toggle" for="const">
+                        <input type="checkbox" id="const">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="one-line-sub">
+                    Apply
+                    <button id="app-det-ana" class="button">Apply</button>
                 </div>
             </div>
         </dialog>
@@ -114,7 +175,7 @@
                 </div>
             </div>
             <div class="control-panel">
-                <img id="prev-dialog-prev" class="prev" src="aaa.jpg">
+                <img id="prev-dialog-prev" class="prev" src="no_image.jpg">
             </div>
         </dialog>
         <div class="left">
@@ -153,12 +214,10 @@
                         <span class="slider"></span>
                     </label>
                 </div>
-                <!--
                 <div class="one-line-sub">
                     Settings
                     <button id="det-settings" class="button">Open</button>
                 </div>
-                -->
             </div>
             <div class="control-panel">
                 <div class="one-line">
@@ -178,8 +237,9 @@
         </div> 
         <div class="preview">
             <div class="prev-box">
-                <img id="prev" class="prev" src="aaa.jpg">
+                <img id="prev" class="prev" src="no_image.jpg">
                 <img src="zoom.svg" class="zoom" id="zoom">
+                <img src="camera.svg" class="capture" id="capture">
             </div>
             <div class="grid-overlay" id="gridOverlay"></div>
             <div class="log-title">Logs</div>

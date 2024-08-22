@@ -93,6 +93,19 @@ footer {
     display: block;
 }
 
+.capture {
+    position: absolute;
+    right: 5px;
+    bottom: 40px;
+    width: 25px;
+    height: 25px;
+    display: none;
+}
+
+.prev-box:hover .capture {
+    display: block;
+}
+
 button {
     width: 100px;
     height: 30px;
@@ -268,6 +281,14 @@ dialog::backdrop {
     background-color: #4caf50; 
 }
 
+.toggle input:disabled + .slider {
+    background-color: var(--c-line);;
+}
+
+.toggle input:disabled + .slider::before {
+    background-color: var(--c-font-dark);; 
+}
+
 .toggle input:checked + .slider::before {
     transform: translateX(24px); 
 }
@@ -401,4 +422,14 @@ select {
 select:focus {
     border-color: #3498db;
     outline: none;
+}
+
+.beta-block {
+    background-color: #15ff005e;
+    color: white;
+    font-weight: normal;
+    font-size: 16px;
+    padding: 1px 20px;
+    display: inline-block;
+    border-radius: 5px;
 }
