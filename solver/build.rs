@@ -1,3 +1,5 @@
+use std::env;
+
 const C_SOURCE: [&str; 64] = [
     // qfits
     "ext/astrometry/qfits-an/anqfits.c",
@@ -74,6 +76,7 @@ const C_SOURCE: [&str; 64] = [
 
 fn main() {
     println!("cargo::rerun-if-changed=ext");
+    let build_dir = env::var("GITHUB_WORKSPACE").unwrap_or("/atomskygaze".to_string());
     cc::Build::new()
         .warnings(false)
         .extra_warnings(false)
@@ -85,7 +88,16 @@ fn main() {
         .include("ext/astrometry")
         .include("ext/astrometry/include")
         .include("ext/astrometry/include/astrometry")
+        .include(format!(
+            "{}/build/buildroot-2024.02/output/staging/usr/include",
+            build_dir
+        ))
         .compile("stellarsolver");
+
+    println!(
+        "cargo:rustc-link-search=native={}/build/buildroot-2024.02/output/target/usr/lib",
+        build_dir
+    );
 
     println!("cargo:rustc-link-lib=gsl");
     println!("cargo:rustc-link-lib=gslcblas");
