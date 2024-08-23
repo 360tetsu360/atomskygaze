@@ -280,19 +280,31 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
                 writer.write_all(jpeg_buf.as_slice()).unwrap();
                 writer.into_inner().unwrap().sync_all().unwrap();
 
+                let path = msg
+                    .time
+                    .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S/detected.fits")
+                    .to_string();
+                let image_description = ImageDescription {
+                    data_type: ImageType::UnsignedByte,
+                    dimensions: &[1080 + 540, 1920],
+                };
+
+                let mut fptr = FitsFile::create(&path)
+                    .with_custom_primary(&image_description)
+                    .overwrite()
+                    .open()
+                    .unwrap();
+
+                let hdu = fptr.primary_hdu().unwrap();
+
                 if msg.solve_field && (msg.save_wcs || msg.draw_constellation) {
                     let mut field = msg.field.take().unwrap();
                     let mask_small = msg.mask.take().unwrap();
                     let solved_ = unsafe { try_solve_field(&mut field, &mask_small) };
                     if let Some(wcs) = solved_ {
                         if msg.save_wcs {
-                            let path = msg
-                                .time
-                                .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S/wcs.fits")
-                                .to_string();
-
                             unsafe {
-                                wcs.save_to_file(&path);
+                                wcs.save_to_hdu(&hdu, &mut fptr);
                             }
                         }
 
@@ -336,24 +348,7 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
                     }
                 }
 
-                let path = msg
-                    .time
-                    .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S/detected.fits")
-                    .to_string();
-                let image_description = ImageDescription {
-                    data_type: ImageType::UnsignedByte,
-                    dimensions: &[1080 + 540, 1920],
-                };
-
-                let mut fitsfile = FitsFile::create(&path)
-                    .with_custom_primary(&image_description)
-                    .overwrite()
-                    .open()
-                    .unwrap();
-
-                let hdu = fitsfile.primary_hdu().unwrap();
-
-                hdu.write_image(&mut fitsfile, &msg.data).unwrap();
+                hdu.write_image(&mut fptr, &msg.data).unwrap();
             }
             SaveMsg::Capture(mut msg) => {
                 let comp = unsafe {
@@ -390,15 +385,15 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
                     dimensions: &[1080 + 540, 1920],
                 };
 
-                let mut fitsfile = FitsFile::create(&path)
+                let mut fptr = FitsFile::create(&path)
                     .with_custom_primary(&image_description)
                     .overwrite()
                     .open()
                     .unwrap();
 
-                let hdu = fitsfile.primary_hdu().unwrap();
+                let hdu = fptr.primary_hdu().unwrap();
 
-                hdu.write_image(&mut fitsfile, &msg.data).unwrap();
+                hdu.write_image(&mut fptr, &msg.data).unwrap();
             }
         }
     }
