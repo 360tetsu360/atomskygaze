@@ -9,6 +9,7 @@ use crate::imp::*;
 use crate::isp::log_all_value;
 use crate::osd::*;
 use crate::record::*;
+use crate::watchdog::WatchdogManager;
 use crate::websocket::*;
 use crate::webstream::*;
 use axum::routing::get;
@@ -32,6 +33,7 @@ mod isp;
 mod osd;
 mod record;
 mod system;
+mod watchdog;
 mod websocket;
 mod webstream;
 
@@ -78,6 +80,7 @@ pub struct AppState {
 #[tokio::main]
 async fn main() {
     env_logger::init();
+    let watchdog = WatchdogManager::init(10).unwrap();
 
     let app_state = match load_from_file().await {
         Ok(p) => p,
@@ -155,6 +158,7 @@ async fn main() {
 
     let app_state_common_instance = app_state_common.clone();
     let flag = shutdown_flag.clone();
+    let wd_feeder = watchdog.make_instance();
     thread::Builder::new()
         .name("led_loop".to_string())
         .spawn(move || {
@@ -197,7 +201,7 @@ async fn main() {
                     led_off(LEDType::Blue).unwrap();
                     led_off(LEDType::Orange).unwrap();
                 }
-
+                wd_feeder.feed().unwrap();
                 std::thread::sleep(std::time::Duration::from_millis(500));
             }
         })

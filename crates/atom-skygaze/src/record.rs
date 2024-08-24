@@ -66,12 +66,7 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
             Err(_) => continue,
         };
         let now: DateTime<Utc> = Utc::now();
-        let offset = if app_state_tmp.timezone < 0 {
-            FixedOffset::west_opt(app_state_tmp.timezone)
-        } else {
-            FixedOffset::east_opt(app_state_tmp.timezone)
-        }
-        .unwrap();
+        let offset = FixedOffset::east_opt(app_state_tmp.timezone).unwrap();
         let current_time: DateTime<FixedOffset> = now.with_timezone(&offset);
         drop(app_state_tmp);
         let next_minute = current_time.minute() + 1;
@@ -129,12 +124,7 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
                 Err(_) => continue,
             };
             let now: DateTime<Utc> = Utc::now();
-            let offset = if app_state_tmp.timezone < 0 {
-                FixedOffset::west_opt(-app_state_tmp.timezone)
-            } else {
-                FixedOffset::east_opt(app_state_tmp.timezone)
-            }
-            .unwrap();
+            let offset = FixedOffset::east_opt(app_state_tmp.timezone).unwrap();
             let current_time: DateTime<FixedOffset> = now.with_timezone(&offset);
             drop(app_state_tmp);
 
@@ -304,7 +294,7 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
                     if let Some(wcs) = solved_ {
                         if msg.save_wcs {
                             unsafe {
-                                wcs.save_to_hdu(&hdu, &mut fptr);
+                                wcs.save_to_hdu(&hdu, &mut fptr).unwrap();
                             }
                         }
 

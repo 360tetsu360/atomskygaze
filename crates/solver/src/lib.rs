@@ -1,6 +1,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 use crate::constellation::*;
+use fitsio::errors::Result;
 use fitsio::hdu::FitsHdu;
 use fitsio::FitsFile;
 use std::alloc::{alloc, Layout};
@@ -195,17 +196,17 @@ fn fits_add_polynomial(
     name: &str,
     order: i32,
     data: &[[f64; 10]; 10],
-) {
+) -> Result<()> {
     for i in 0..order {
         for j in 0..order {
             hdu.write_key(
                 fits,
                 &format!("{}_{}_{}", name, i, j),
                 data[i as usize][j as usize],
-            )
-            .unwrap();
+            )?;
         }
     }
+    Ok(())
 }
 
 pub struct Solved {
@@ -218,128 +219,108 @@ impl Solved {
         sip_write_to_file(&self.wcs, c_str.as_ptr());
     }
 
-    pub unsafe fn save_to_hdu(&self, hdu: &FitsHdu, fits: &mut FitsFile) {
+    pub unsafe fn save_to_hdu(&self, hdu: &FitsHdu, fits: &mut FitsFile) -> Result<()> {
         // common
-        hdu.write_key(fits, "WCSAXES", 2).unwrap();
+        hdu.write_key(fits, "WCSAXES", 2)?;
         if self.wcs.wcstan.sin != 0 {
             hdu.write_key(
                 fits,
                 "CTYPE1",
                 ("RA---SIN-SIP", "SIN projection + SIP distortions"),
-            )
-            .unwrap();
+            )?;
             hdu.write_key(
                 fits,
                 "CTYPE2",
                 ("DEC--SIN-SIP", "SIN projection + SIP distortions"),
-            )
-            .unwrap();
+            )?;
         } else {
             hdu.write_key(
                 fits,
                 "CTYPE1",
                 ("RA---TAN-SIP", "TAN (gnomic) projection + SIP distortions"),
-            )
-            .unwrap();
+            )?;
             hdu.write_key(
                 fits,
                 "CTYPE2",
                 ("DEC--TAN-SIP", "TAN (gnomic) projection + SIP distortions"),
-            )
-            .unwrap();
+            )?;
         }
         hdu.write_key(
             fits,
             "EQUINOX",
             (2000.0, "Equatorial coordinates definition (yr)"),
-        )
-        .unwrap();
-        hdu.write_key(fits, "LONPOLE", 180.0).unwrap();
-        hdu.write_key(fits, "LATPOLE", 0.0).unwrap();
+        )?;
+        hdu.write_key(fits, "LONPOLE", 180.0)?;
+        hdu.write_key(fits, "LATPOLE", 0.0)?;
         hdu.write_key(
             fits,
             "CRVAL1",
             (self.wcs.wcstan.crval[0], "RA  of reference point"),
-        )
-        .unwrap();
+        )?;
         hdu.write_key(
             fits,
             "CRVAL2",
             (self.wcs.wcstan.crval[1], "DEC of reference point"),
-        )
-        .unwrap();
+        )?;
         hdu.write_key(
             fits,
             "CRPIX1",
             (self.wcs.wcstan.crpix[0], "X reference pixel"),
-        )
-        .unwrap();
+        )?;
         hdu.write_key(
             fits,
             "CRPIX2",
             (self.wcs.wcstan.crpix[1], "Y reference pixel"),
-        )
-        .unwrap();
-        hdu.write_key(fits, "CUNIT1", ("deg", "X pixel scale units"))
-            .unwrap();
-        hdu.write_key(fits, "CUNIT2", ("deg", "Y pixel scale units"))
-            .unwrap();
+        )?;
+        hdu.write_key(fits, "CUNIT1", ("deg", "X pixel scale units"))?;
+        hdu.write_key(fits, "CUNIT2", ("deg", "Y pixel scale units"))?;
         hdu.write_key(
             fits,
             "CD1_1",
             (self.wcs.wcstan.cd[0][0], "Transformation matrix"),
-        )
-        .unwrap();
-        hdu.write_key(fits, "CD1_2", self.wcs.wcstan.cd[0][1])
-            .unwrap();
-        hdu.write_key(fits, "CD2_1", self.wcs.wcstan.cd[1][0])
-            .unwrap();
-        hdu.write_key(fits, "CD2_2", self.wcs.wcstan.cd[1][1])
-            .unwrap();
+        )?;
+        hdu.write_key(fits, "CD1_2", self.wcs.wcstan.cd[0][1])?;
+        hdu.write_key(fits, "CD2_1", self.wcs.wcstan.cd[1][0])?;
+        hdu.write_key(fits, "CD2_2", self.wcs.wcstan.cd[1][1])?;
         if self.wcs.wcstan.imagew > 0. {
             hdu.write_key(
                 fits,
                 "IMAGEW",
                 (self.wcs.wcstan.imagew, "Image width,  in pixels."),
-            )
-            .unwrap();
+            )?;
         }
         if self.wcs.wcstan.imageh > 0. {
             hdu.write_key(
                 fits,
                 "IMAGEH",
                 (self.wcs.wcstan.imageh, "Image height, in pixels."),
-            )
-            .unwrap();
+            )?;
         }
         hdu.write_key(
             fits,
             "A_ORDER",
             (self.wcs.a_order, "Polynomial order, axis 1"),
-        )
-        .unwrap();
-        fits_add_polynomial(hdu, fits, "A", self.wcs.a_order, &self.wcs.a);
+        )?;
+        fits_add_polynomial(hdu, fits, "A", self.wcs.a_order, &self.wcs.a)?;
         hdu.write_key(
             fits,
             "B_ORDER",
             (self.wcs.b_order, "Polynomial order, axis 2"),
-        )
-        .unwrap();
-        fits_add_polynomial(hdu, fits, "B", self.wcs.b_order, &self.wcs.b);
+        )?;
+        fits_add_polynomial(hdu, fits, "B", self.wcs.b_order, &self.wcs.b)?;
         hdu.write_key(
             fits,
             "AP_ORDER",
             (self.wcs.a_order, "Inv polynomial order, axis 1"),
-        )
-        .unwrap();
-        fits_add_polynomial(hdu, fits, "AP", self.wcs.ap_order, &self.wcs.ap);
+        )?;
+        fits_add_polynomial(hdu, fits, "AP", self.wcs.ap_order, &self.wcs.ap)?;
         hdu.write_key(
             fits,
             "A_ORDER",
             (self.wcs.a_order, "Inv polynomial order, axis 2"),
-        )
-        .unwrap();
-        fits_add_polynomial(hdu, fits, "BP", self.wcs.bp_order, &self.wcs.bp);
+        )?;
+        fits_add_polynomial(hdu, fits, "BP", self.wcs.bp_order, &self.wcs.bp)?;
+        Ok(())
     }
 
     pub unsafe fn ra_dec(&self) -> (f64, f64) {

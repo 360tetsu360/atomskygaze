@@ -254,12 +254,7 @@ pub unsafe fn start(
     let mut comp_list = VecDeque::<Vec<u8>>::with_capacity(10);
     let mut stack_frame: Option<Vec<u8>> = None;
     let app_state_tmp = app_state.lock().unwrap();
-    let offset = if app_state_tmp.timezone < 0 {
-        FixedOffset::west_opt(-app_state_tmp.timezone)
-    } else {
-        FixedOffset::east_opt(app_state_tmp.timezone)
-    }
-    .unwrap();
+    let offset = FixedOffset::east_opt(app_state_tmp.timezone).unwrap();
     let mut detection_start: DateTime<FixedOffset> = Utc::now().with_timezone(&offset);
 
     drop(app_state_tmp);
@@ -297,12 +292,7 @@ pub unsafe fn start(
         };
         if app_state_tmp.cap {
             app_state_tmp.cap = false;
-            let offset = if app_state_tmp.timezone < 0 {
-                FixedOffset::west_opt(-app_state_tmp.timezone)
-            } else {
-                FixedOffset::east_opt(app_state_tmp.timezone)
-            }
-            .unwrap();
+            let offset = FixedOffset::east_opt(app_state_tmp.timezone).unwrap();
 
             let time: DateTime<FixedOffset> = Utc::now().with_timezone(&offset);
             let mut frame = Vec::with_capacity(1920 * (1080 + 540));
@@ -319,16 +309,11 @@ pub unsafe fn start(
 
         let is_detect_time = if app_state_tmp.detection_config.use_time {
             let det_time = app_state_tmp.detection_config.detection_time;
-            let offset = if app_state_tmp.timezone < 0 {
-                FixedOffset::west_opt(-app_state_tmp.timezone)
-            } else {
-                FixedOffset::east_opt(app_state_tmp.timezone)
-            }
-            .unwrap();
+            let offset = FixedOffset::east_opt(app_state_tmp.timezone).unwrap();
             let now = Utc::now().with_timezone(&offset);
             is_within_time_range(now, det_time.start, det_time.end)
         } else {
-            false
+            true
         };
 
         if app_state_tmp.detect && !last_frame.is_null() && is_detect_time {
@@ -407,12 +392,7 @@ pub unsafe fn start(
                     fld.detect(&cropped, &mut lines).unwrap();
 
                     if !lines.is_empty() {
-                        let offset = if app_state_tmp.timezone < 0 {
-                            FixedOffset::west_opt(-app_state_tmp.timezone)
-                        } else {
-                            FixedOffset::east_opt(app_state_tmp.timezone)
-                        }
-                        .unwrap();
+                        let offset = FixedOffset::east_opt(app_state_tmp.timezone).unwrap();
 
                         let time: DateTime<FixedOffset> = Utc::now().with_timezone(&offset);
                         if detecting_flag == 0 {

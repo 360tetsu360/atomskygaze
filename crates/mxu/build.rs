@@ -28,6 +28,6 @@ fn main() {
         panic!("GCC command executed with non-zero exit status");
     }
 
-    println!("cargo:rustc-link-search=native={}/mxu", src_dir);
+    println!("cargo:rustc-link-search=native={}/crates/mxu", src_dir);
     println!("cargo:rustc-link-lib=mxu_imgproc");
 }

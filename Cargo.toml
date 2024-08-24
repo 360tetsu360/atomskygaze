@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-    "atom-skygaze",
-    "isvp-sys",
-    "mxu",
-    "solver"
+    "crates/atom-skygaze",
+    "crates/isvp-sys",
+    "crates/mxu",
+    "crates/solver"
 ]
 
 [patch.crates-io]

@@ -337,6 +337,9 @@ pub async fn handle_socket(
                             tokio::spawn(system::reboot(flag));
                             break;
                         }
+                        "freeze" => loop {
+                            std::thread::sleep(std::time::Duration::from_millis(1000));
+                        },
                         _ => {
                             println!("Unknwon command")
                         }
