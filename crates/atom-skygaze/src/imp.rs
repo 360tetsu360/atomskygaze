@@ -577,7 +577,7 @@ pub unsafe fn imp_jpeg_init() -> bool {
     true
 }
 
-pub unsafe fn imp_avc_init() -> bool {
+pub unsafe fn imp_hevc_init() -> bool {
     let mut channel_attr = IMPEncoderChnAttr {
         encAttr: IMPEncoderEncAttr {
             eProfile: 0,

@@ -1,5 +1,5 @@
 use isvp_sys::*;
-use log::error;
+use log::{error, warn};
 use std::io::Cursor;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
@@ -8,22 +8,31 @@ use tokio::sync::watch;
 pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>, flag: Arc<Mutex<bool>>) -> bool {
     if IMP_Encoder_StartRecvPic(2) < 0 {
         error!("IMP_Encoder_StartRecvPic failed");
-        return false;
+        panic!();
     }
 
     loop {
         let shutdown_flag = match flag.lock() {
             Ok(guard) => guard,
-            Err(_) => continue,
+            Err(e) => {
+                log::warn!(
+                    "shutdown_flag mutex lock error : {} at {}:{}",
+                    e,
+                    file!(),
+                    line!()
+                );
+                continue;
+            }
         };
 
         if *shutdown_flag {
+            log::info!("Stopping jpeg_loop");
             break true;
         }
         drop(shutdown_flag);
 
         if IMP_Encoder_PollingStream(2, 10000) < 0 {
-            error!("IMP_Encoder_PollingStream failed");
+            warn!("IMP_Encoder_PollingStream failed");
             continue;
         }
 
@@ -53,7 +62,7 @@ pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>, flag: Arc<Mutex<bool>>) -> 
 
         if IMP_Encoder_GetStream(2, &mut stream, true) < 0 {
             error!("IMP_Encoder_GetStream failed");
-            continue;
+            panic!();
         }
 
         let stream_packs = std::slice::from_raw_parts(
@@ -90,7 +99,7 @@ pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>, flag: Arc<Mutex<bool>>) -> 
 
         if IMP_Encoder_ReleaseStream(2, &mut stream) < 0 {
             error!("IMP_Encoder_ReleaseStream failed");
-            continue;
+            panic!();
         }
     }
 }

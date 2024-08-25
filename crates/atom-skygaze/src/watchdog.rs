@@ -14,25 +14,28 @@ impl WatchdogManager {
         let fd = file.as_raw_fd();
         unsafe {
             let option_ptr: *const ::std::os::raw::c_int = &WDIOS_ENABLECARD;
-            if libc::ioctl(fd, WDIOC_SETOPTIONS, option_ptr) != 0 {
+            let err = libc::ioctl(fd, WDIOC_SETOPTIONS, option_ptr);
+            if err != 0 {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
-                    "WDIOC_SETOPTIONS fail",
+                    format!("WDIOC_SETOPTIONS failed with error code {}", err),
                 ));
             }
 
             let count_ptr: *const ::std::os::raw::c_int = &count;
-            if libc::ioctl(fd, WDIOC_SETTIMEOUT, count_ptr) != 0 {
+            let err = libc::ioctl(fd, WDIOC_SETTIMEOUT, count_ptr);
+            if err != 0 {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
-                    "WDIOC_SETTIMEOUT fail",
+                    format!("WDIOC_SETTIMEOUT failed with error code {}", err),
                 ));
             }
 
-            if libc::ioctl(fd, WDIOC_KEEPALIVE, 0) != 0 {
+            let err = libc::ioctl(fd, WDIOC_KEEPALIVE, 0);
+            if err != 0 {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
-                    "WDIOC_KEEPALIVE fail",
+                    format!("WDIOC_KEEPALIVE failed with error code {}", err),
                 ));
             }
         }
@@ -53,10 +56,11 @@ pub struct Watchdog {
 impl Watchdog {
     pub fn feed(&self) -> std::io::Result<()> {
         unsafe {
-            if libc::ioctl(self.fd, WDIOC_KEEPALIVE, 0) != 0 {
+            let err = libc::ioctl(self.fd, WDIOC_KEEPALIVE, 0);
+            if err != 0 {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
-                    "WDIOC_KEEPALIVE fail",
+                    format!("WDIOC_KEEPALIVE failed with error code {}", err),
                 ));
             }
         }

@@ -10,7 +10,7 @@ use fitsio::images::ImageDescription;
 use fitsio::images::ImageType;
 use fitsio::FitsFile;
 use isvp_sys::*;
-use log::error;
+use log::{error, info, warn};
 use minimp4::Mp4Muxer;
 use mxu::create_mask;
 use opencv::core::*;
@@ -33,37 +33,64 @@ pub fn record_loops(
     app_state: Arc<Mutex<AppState>>,
     flag: Arc<Mutex<bool>>,
 ) {
-    thread::Builder::new()
-        .name("h264_loop".to_string())
-        .spawn(move || unsafe { get_h264_stream(app_state, flag) })
-        .unwrap();
+    info!("Starting hevc_loop");
+    let res = thread::Builder::new()
+        .name("hevc_loop".to_string())
+        .spawn(move || unsafe { get_h264_stream(app_state, flag) });
 
-    thread::Builder::new()
+    if let Err(e) = res {
+        error!("Failed to start hevc_loop : {}", e);
+        panic!();
+    }
+
+    info!("Starting save_detection_loop");
+    let res = thread::Builder::new()
         .name("save_detection_loop".to_string())
-        .spawn(move || save_detection(detected_rx))
-        .unwrap();
+        .spawn(move || save_detection(detected_rx));
+
+    if let Err(e) = res {
+        error!("Failed to start save_detection_loop : {}", e);
+        panic!();
+    }
 }
 
 unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>>) -> bool {
     if IMP_Encoder_StartRecvPic(3) < 0 {
         error!("IMP_Encoder_StartRecvPic failed");
-        return false;
+        panic!();
     }
 
     loop {
         let shutdown_flag = match flag.lock() {
             Ok(guard) => guard,
-            Err(_) => continue,
+            Err(e) => {
+                warn!(
+                    "shutdown_flag mutex lock error : {} at {}:{}",
+                    e,
+                    file!(),
+                    line!()
+                );
+                continue;
+            }
         };
 
         if *shutdown_flag {
+            log::info!("Stopping hevc_loop");
             break true;
         }
         drop(shutdown_flag);
 
         let app_state_tmp = match app_state.lock() {
             Ok(guard) => guard,
-            Err(_) => continue,
+            Err(e) => {
+                warn!(
+                    "app_state mutex lock error : {} at {}:{}",
+                    e,
+                    file!(),
+                    line!()
+                );
+                continue;
+            }
         };
         let now: DateTime<Utc> = Utc::now();
         let offset = FixedOffset::east_opt(app_state_tmp.timezone).unwrap();
@@ -99,12 +126,18 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
 
         let dir = Path::new(&dir_day);
         if !dir.is_dir() {
-            std::fs::create_dir(dir).unwrap();
+            if let Err(e) = std::fs::create_dir(dir) {
+                error!("create_dir failed : {}", e);
+                panic!();
+            }
         }
 
         let hour_dir = dir.join(format!("{:02}", current_time.hour()));
         if !hour_dir.is_dir() {
-            std::fs::create_dir(&hour_dir).unwrap();
+            if let Err(e) = std::fs::create_dir(&hour_dir) {
+                error!("create_dir failed : {}", e);
+                panic!();
+            }
         }
 
         let mp4path = current_time
@@ -113,7 +146,13 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
 
         let mp4title = current_time.format("%Y-%m-%d-%H-%M").to_string();
 
-        let file = File::create(mp4path).unwrap();
+        let file = match File::create(mp4path) {
+            Ok(f) => f,
+            Err(e) => {
+                error!("create failed : {}", e);
+                panic!()
+            }
+        };
         let mut mp4muxer = Mp4Muxer::new(file);
         mp4muxer.init_video(1920, 1080, true, &mp4title);
         IMP_Encoder_RequestIDR(3);
@@ -121,11 +160,20 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
         loop {
             let app_state_tmp = match app_state.lock() {
                 Ok(guard) => guard,
-                Err(_) => continue,
+                Err(e) => {
+                    warn!(
+                        "app_state mutex lock error : {} at {}:{}",
+                        e,
+                        file!(),
+                        line!()
+                    );
+                    continue;
+                }
             };
             let now: DateTime<Utc> = Utc::now();
             let offset = FixedOffset::east_opt(app_state_tmp.timezone).unwrap();
             let current_time: DateTime<FixedOffset> = now.with_timezone(&offset);
+            let fps = app_state_tmp.fps;
             drop(app_state_tmp);
 
             if current_time >= target_time {
@@ -137,7 +185,15 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
 
             let shutdown_flag = match flag.lock() {
                 Ok(guard) => guard,
-                Err(_) => continue,
+                Err(e) => {
+                    warn!(
+                        "shutdown_flag mutex lock error : {} at {}:{}",
+                        e,
+                        file!(),
+                        line!()
+                    );
+                    continue;
+                }
             };
 
             if *shutdown_flag {
@@ -145,15 +201,8 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
             }
             drop(shutdown_flag);
 
-            let app_state_tmp = match app_state.lock() {
-                Ok(guard) => guard,
-                Err(_) => continue,
-            };
-            let fps = app_state_tmp.fps;
-            drop(app_state_tmp);
-
             if IMP_Encoder_PollingStream(3, 10000) < 0 {
-                error!("IMP_Encoder_PollingStream failed");
+                warn!("IMP_Encoder_PollingStream failed");
                 continue;
             }
 
@@ -183,7 +232,7 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
 
             if IMP_Encoder_GetStream(3, &mut stream, false) < 0 {
                 error!("IMP_Encoder_GetStream failed");
-                return false;
+                panic!();
             }
 
             let stream_packs = std::slice::from_raw_parts(
@@ -217,7 +266,7 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
 
             if IMP_Encoder_ReleaseStream(3, &mut stream) < 0 {
                 error!("IMP_Encoder_ReleaseStream failed");
-                return false;
+                panic!();
             }
         }
 
@@ -243,7 +292,10 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
                     .to_string();
 
                 let dir = Path::new(&dir_path);
-                std::fs::create_dir(dir).unwrap();
+                if let Err(e) = std::fs::create_dir(dir) {
+                    error!("create_dir failed : {}", e);
+                    panic!();
+                }
 
                 let comp = unsafe {
                     Mat::new_rows_cols_with_data_def(
@@ -265,10 +317,22 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
                     .time
                     .format("/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S/detected.jpg")
                     .to_string();
-                let file = File::create(&path).unwrap();
+                let file = match File::create(&path) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        error!("create failed : {}", e);
+                        panic!();
+                    }
+                };
                 let mut writer = BufWriter::new(file);
-                writer.write_all(jpeg_buf.as_slice()).unwrap();
-                writer.into_inner().unwrap().sync_all().unwrap();
+                if let Err(e) = writer.write_all(jpeg_buf.as_slice()) {
+                    error!("jpeg write_all failed : {}", e);
+                    panic!();
+                }
+                if let Err(e) = writer.into_inner().unwrap().sync_all() {
+                    error!("jpeg into_inner failed : {}", e);
+                    panic!();
+                }
 
                 let path = msg
                     .time
@@ -279,22 +343,32 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
                     dimensions: &[1080 + 540, 1920],
                 };
 
-                let mut fptr = FitsFile::create(&path)
+                let mut fptr = match FitsFile::create(&path)
                     .with_custom_primary(&image_description)
                     .overwrite()
                     .open()
-                    .unwrap();
+                {
+                    Ok(f) => f,
+                    Err(e) => {
+                        error!("FitsFile create failed : {}", e);
+                        panic!();
+                    }
+                };
 
                 let hdu = fptr.primary_hdu().unwrap();
 
                 if msg.solve_field && (msg.save_wcs || msg.draw_constellation) {
                     let mut field = msg.field.take().unwrap();
                     let mask_small = msg.mask.take().unwrap();
+                    info!("Trying solve field");
                     let solved_ = unsafe { try_solve_field(&mut field, &mask_small) };
                     if let Some(wcs) = solved_ {
                         if msg.save_wcs {
                             unsafe {
-                                wcs.save_to_hdu(&hdu, &mut fptr).unwrap();
+                                if let Err(e) = wcs.save_to_hdu(&hdu, &mut fptr) {
+                                    error!("Failed to save wcs : {}", e);
+                                    panic!();
+                                }
                             }
                         }
 
@@ -330,15 +404,32 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
                                     "/media/mmc/records/detected/%Y-%m-%d_%H_%M_%S/anotated.jpg",
                                 )
                                 .to_string();
-                            let file = File::create(&path).unwrap();
+                            let file = match File::create(&path) {
+                                Ok(f) => f,
+                                Err(e) => {
+                                    error!("create failed : {}", e);
+                                    panic!();
+                                }
+                            };
                             let mut writer = BufWriter::new(file);
-                            writer.write_all(jpeg_buf.as_slice()).unwrap();
-                            writer.into_inner().unwrap().sync_all().unwrap();
+                            if let Err(e) = writer.write_all(jpeg_buf.as_slice()) {
+                                error!("constellation write_all failed : {}", e);
+                                panic!();
+                            }
+                            if let Err(e) = writer.into_inner().unwrap().sync_all() {
+                                error!("constellation into_inner failed : {}", e);
+                                panic!();
+                            }
                         }
+                    } else {
+                        warn!("Failed solve field");
                     }
                 }
 
-                hdu.write_image(&mut fptr, &msg.data).unwrap();
+                if let Err(e) = hdu.write_image(&mut fptr, &msg.data) {
+                    error!("Failed to save detected fits : {}", e);
+                    panic!();
+                }
             }
             SaveMsg::Capture(mut msg) => {
                 let comp = unsafe {
@@ -361,10 +452,22 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
                     .time
                     .format("/media/mmc/records/capture/%Y-%m-%d_%H_%M_%S.jpg")
                     .to_string();
-                let file = File::create(&path).unwrap();
+                let file = match File::create(&path) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        error!("create failed : {}", e);
+                        panic!();
+                    }
+                };
                 let mut writer = BufWriter::new(file);
-                writer.write_all(jpeg_buf.as_slice()).unwrap();
-                writer.into_inner().unwrap().sync_all().unwrap();
+                if let Err(e) = writer.write_all(jpeg_buf.as_slice()) {
+                    error!("capture write_all failed : {}", e);
+                    panic!();
+                }
+                if let Err(e) = writer.into_inner().unwrap().sync_all() {
+                    error!("capture into_inner failed : {}", e);
+                    panic!();
+                }
 
                 let path = msg
                     .time
@@ -375,15 +478,24 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
                     dimensions: &[1080 + 540, 1920],
                 };
 
-                let mut fptr = FitsFile::create(&path)
+                let mut fptr = match FitsFile::create(&path)
                     .with_custom_primary(&image_description)
                     .overwrite()
                     .open()
-                    .unwrap();
+                {
+                    Ok(f) => f,
+                    Err(e) => {
+                        error!("FitsFile create failed : {}", e);
+                        panic!();
+                    }
+                };
 
                 let hdu = fptr.primary_hdu().unwrap();
 
-                hdu.write_image(&mut fptr, &msg.data).unwrap();
+                if let Err(e) = hdu.write_image(&mut fptr, &msg.data) {
+                    error!("Failed to save detected fits : {}", e);
+                    panic!();
+                }
             }
         }
     }

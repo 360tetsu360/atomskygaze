@@ -3,31 +3,30 @@ use isvp_sys::*;
 pub unsafe fn log_all_value() {
     let mut v = 0;
     IMP_ISP_Tuning_GetAntiFlickerAttr(&mut v);
-    println!("anti flicker {}", v);
+    log::debug!("anti flicker {}", v);
     let mut vu8 = 0;
     IMP_ISP_Tuning_GetBrightness(&mut vu8);
-    println!("brightness {}", vu8);
+    log::debug!("brightness {}", vu8);
     IMP_ISP_Tuning_GetContrast(&mut vu8);
-    println!("contrast {}", vu8);
+    log::debug!("contrast {}", vu8);
     IMP_ISP_Tuning_GetSharpness(&mut vu8);
-    println!("sharpness {}", vu8);
+    log::debug!("sharpness {}", vu8);
     IMP_ISP_Tuning_GetSaturation(&mut vu8);
-    println!("saturation {}", vu8);
+    log::debug!("saturation {}", vu8);
     IMP_ISP_Tuning_GetTotalGain(&mut v);
-    println!("total gain {}", v);
+    log::debug!("total gain {}", v);
     IMP_ISP_Tuning_GetISPHflip(&mut v);
-    println!("hflip {}", v);
+    log::debug!("hflip {}", v);
     IMP_ISP_Tuning_GetISPVflip(&mut v);
-    println!("vflip {}", v);
+    log::debug!("vflip {}", v);
     IMP_ISP_Tuning_GetISPRunningMode(&mut v);
-    println!("running mode {}", v);
-    //IMP_ISP_Tuning_GetGamma(&mut v);
-    //println!("gamma {}", v);
+    log::debug!("running mode {}", v);
+
     let mut vi = 0;
     IMP_ISP_Tuning_GetAeComp(&mut vi);
-    println!("ae comp {}", vi);
+    log::debug!("ae comp {}", vi);
     IMP_ISP_Tuning_GetAeLuma(&mut vi);
-    println!("ae luma {}", v);
+    log::debug!("ae luma {}", v);
 
     let mut vexpr = IMPISPExpr {
         s_attr: isp_core_expr_attr__bindgen_ty_1 {
@@ -38,11 +37,11 @@ pub unsafe fn log_all_value() {
     };
 
     IMP_ISP_Tuning_GetExpr(&mut vexpr);
-    println!("g_attr mode {}", vexpr.g_attr.mode);
-    println!("g_attr time {}", vexpr.g_attr.integration_time);
-    println!("g_attr tmin {}", vexpr.g_attr.integration_time_min);
-    println!("g_attr tmax {}", vexpr.g_attr.integration_time_max);
-    println!("g_attr inus {}", vexpr.g_attr.one_line_expr_in_us);
+    log::debug!("g_attr mode {}", vexpr.g_attr.mode);
+    log::debug!("g_attr time {}", vexpr.g_attr.integration_time);
+    log::debug!("g_attr tmin {}", vexpr.g_attr.integration_time_min);
+    log::debug!("g_attr tmax {}", vexpr.g_attr.integration_time_max);
+    log::debug!("g_attr inus {}", vexpr.g_attr.one_line_expr_in_us);
 
     let mut vwb = IMPISPWB {
         mode: 0,
@@ -50,19 +49,19 @@ pub unsafe fn log_all_value() {
         bgain: 0,
     };
     IMP_ISP_Tuning_GetWB(&mut vwb);
-    println!("wbmode {}", vwb.mode);
-    println!("wb rgain {}", vwb.rgain);
-    println!("wb bgain {}", vwb.bgain);
+    log::debug!("wbmode {}", vwb.mode);
+    log::debug!("wb rgain {}", vwb.rgain);
+    log::debug!("wb bgain {}", vwb.bgain);
 
     IMP_ISP_Tuning_GetWB_Statis(&mut vwb);
-    println!("wbst mode {}", vwb.mode);
-    println!("wbst rgain {}", vwb.rgain);
-    println!("wbst bgain {}", vwb.bgain);
+    log::debug!("wbst mode {}", vwb.mode);
+    log::debug!("wbst rgain {}", vwb.rgain);
+    log::debug!("wbst bgain {}", vwb.bgain);
 
     IMP_ISP_Tuning_GetWB_GOL_Statis(&mut vwb);
-    println!("wbgolst mode {}", vwb.mode);
-    println!("wbgolst rgain {}", vwb.rgain);
-    println!("wbgolst bgain {}", vwb.bgain);
+    log::debug!("wbgolst mode {}", vwb.mode);
+    log::debug!("wbgolst rgain {}", vwb.rgain);
+    log::debug!("wbgolst bgain {}", vwb.bgain);
 
     let mut vrgb = IMPISPCOEFFTWB {
         rgb_coefft_wb_r: 0,
@@ -70,17 +69,17 @@ pub unsafe fn log_all_value() {
         rgb_coefft_wb_b: 0,
     };
     IMP_ISP_Tuning_Awb_GetRgbCoefft(&mut vrgb);
-    println!("rgb r {}", vrgb.rgb_coefft_wb_r);
-    println!("rgb g {}", vrgb.rgb_coefft_wb_g);
-    println!("rgb b {}", vrgb.rgb_coefft_wb_b);
+    log::debug!("rgb r {}", vrgb.rgb_coefft_wb_r);
+    log::debug!("rgb g {}", vrgb.rgb_coefft_wb_g);
+    log::debug!("rgb b {}", vrgb.rgb_coefft_wb_b);
 
     let mut vu = 0;
     IMP_ISP_Tuning_GetMaxAgain(&mut vu);
-    println!("max again {}", vu);
+    log::debug!("max again {}", vu);
     IMP_ISP_Tuning_GetMaxDgain(&mut vu);
-    println!("max dgain {}", vu);
+    log::debug!("max dgain {}", vu);
     IMP_ISP_Tuning_GetHiLightDepress(&mut vu);
-    println!("hi light depress {}", vu);
+    log::debug!("hi light depress {}", vu);
 
     let mut eva_attr = IMPISPEVAttr {
         ev: 0,
@@ -93,10 +92,10 @@ pub unsafe fn log_all_value() {
 
     IMP_ISP_Tuning_GetEVAttr(&mut eva_attr);
 
-    println!("ev {}", eva_attr.dgain);
-    println!("expr_us {}", eva_attr.dgain);
-    println!("ev_log2 {}", eva_attr.dgain);
-    println!("again {}", eva_attr.dgain);
-    println!("dgain {}", eva_attr.dgain);
-    println!("gain_log2 {}", eva_attr.gain_log2);
+    log::debug!("ev {}", eva_attr.dgain);
+    log::debug!("expr_us {}", eva_attr.dgain);
+    log::debug!("ev_log2 {}", eva_attr.dgain);
+    log::debug!("again {}", eva_attr.dgain);
+    log::debug!("dgain {}", eva_attr.dgain);
+    log::debug!("gain_log2 {}", eva_attr.gain_log2);
 }

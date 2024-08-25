@@ -2,7 +2,7 @@ use crate::font::BITMAP_ARRAY;
 use crate::AppState;
 use chrono::*;
 use isvp_sys::*;
-use log::error;
+use log::{error, warn};
 use std::sync::{Arc, Mutex};
 
 const TEXT_LENGTH: usize = 60;
@@ -94,24 +94,24 @@ pub unsafe fn osd_exit() -> bool {
 
     if IMP_System_UnBind(&mut fscell, &mut osdcell) < 0 {
         error!("IMP_System_UnBind error !");
-        return false;
+        panic!();
     }
 
     if IMP_OSD_ShowRgn(FONT_HANDLE, GRP_NUM, 0) < 0 {
         error!("IMP_OSD_ShowRgn() timeStamp error");
-        return false;
+        panic!();
     }
 
     if IMP_OSD_UnRegisterRgn(FONT_HANDLE, GRP_NUM) < 0 {
         error!("IMP_OSD_UnRegisterRgn() timeStamp error");
-        return false;
+        panic!();
     }
 
     IMP_OSD_DestroyRgn(FONT_HANDLE);
 
     if IMP_OSD_DestroyGroup(GRP_NUM) < 0 {
         error!("IMP_OSD_DestroyGroup() timeStamp error");
-        return false;
+        panic!();
     }
 
     true
@@ -154,13 +154,11 @@ unsafe fn imp_osd_show(
     grp_num: ::std::os::raw::c_int,
     font_handle: IMPRgnHandle,
     show_val: ::std::os::raw::c_int,
-) -> bool {
+) {
     if IMP_OSD_ShowRgn(font_handle, grp_num, show_val) < 0 {
         error!("IMP_OSD_ShowRgn() timeStamp error");
-        return false;
+        panic!();
     }
-
-    true
 }
 
 pub unsafe fn imp_osd_start(
@@ -173,35 +171,45 @@ pub unsafe fn imp_osd_start(
     let mut last_state = true;
     let uppercase_ver = VERSION.to_uppercase();
 
-    if !imp_osd_show(grp_num, font_handle, 1) {
-        error!("OSD show error");
-        return;
-    }
+    imp_osd_show(grp_num, font_handle, 1);
 
     loop {
         let shutdown_flag = match flag.lock() {
             Ok(guard) => guard,
-            Err(_) => continue,
+            Err(e) => {
+                log::warn!(
+                    "shutdown_flag mutex lock error : {} at {}:{}",
+                    e,
+                    file!(),
+                    line!()
+                );
+                continue;
+            }
         };
 
         if *shutdown_flag {
+            log::info!("Stopping led_loop");
             break;
         }
         drop(shutdown_flag);
 
         let app_state_tmp = match app_state.lock() {
             Ok(guard) => guard,
-            Err(_) => continue,
+            Err(e) => {
+                warn!(
+                    "app_state mutex lock error : {} at{}:{}",
+                    e,
+                    file!(),
+                    line!()
+                );
+                continue;
+            }
         };
         if last_state != app_state_tmp.timestamp {
             if app_state_tmp.timestamp {
-                if !imp_osd_show(grp_num, font_handle, 1) {
-                    error!("OSD show error");
-                    return;
-                }
-            } else if !imp_osd_show(grp_num, font_handle, 0) {
-                error!("OSD show error");
-                return;
+                imp_osd_show(grp_num, font_handle, 1);
+            } else {
+                imp_osd_show(grp_num, font_handle, 0);
             }
         }
         last_state = app_state_tmp.timestamp;

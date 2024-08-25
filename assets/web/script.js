@@ -40,6 +40,7 @@ const tzInts = [
     {"label":"(UTC+14:00)", "value":50400}
 ];
 
+document.getElementById("loading").showModal();
 const gridOverlay = document.getElementById("gridOverlay");
 var is_clicking_left = false;
 var is_clicking_right = false;
@@ -100,6 +101,7 @@ var connection = new WebSocket(`ws://${host}/ws`);
 
 connection.onopen = function(event) {
     console.log("Connected");
+    document.getElementById("loading").close();
 };
 
 connection.onerror = function(error) {
@@ -256,6 +258,7 @@ connection.onmessage = function(event) {
 
 connection.onclose = function() {
     console.log("Close");
+    document.getElementById("closed").showModal();
 };
 
 const yyyymmdd = new Intl.DateTimeFormat(
@@ -277,7 +280,7 @@ function update_time() {
     }
     var dev_time = new Date();
     document.getElementById("dev-time").innerHTML = yyyymmdd.format(dev_time);
-    connection.send("time");
+    connection.send("ping");
 }
 setInterval('update_time()',500);
 

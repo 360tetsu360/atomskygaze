@@ -1,10 +1,11 @@
 use crate::imp_shutdown;
+use log::{error, info};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use tokio::time::{sleep, Duration};
 
 pub async fn reboot(flag: Arc<Mutex<bool>>) {
-    println!("Shutdown loops");
+    info!("Shutdown loops");
     match flag.lock() {
         Ok(mut guard) => {
             *guard = true;
@@ -17,20 +18,28 @@ pub async fn reboot(flag: Arc<Mutex<bool>>) {
 
     sleep(Duration::from_secs(5)).await;
 
-    println!("Shutdown IMP");
+    info!("Shutdown IMP");
     unsafe {
-        imp_shutdown();
+        if !imp_shutdown() {
+            error!("Failed to shutdown imp");
+            panic!();
+        }
     }
 
-    println!("Shutdown System");
-    let output = Command::new("reboot")
-        .output()
-        .expect("Failed to execute reboot command");
+    info!("Shutdown System");
+    let output = match Command::new("reboot").output() {
+        Ok(o) => o,
+        Err(e) => {
+            error!("Failed to execute reboot command : {}", e);
+            panic!();
+        }
+    };
 
     if output.status.success() {
-        println!("System reboot command executed successfully.");
+        info!("System reboot command executed successfully.");
     } else {
         let error_message = String::from_utf8_lossy(&output.stderr);
-        println!("Failed to reboot system: {}", error_message);
+        error!("Failed to reboot system: {}", error_message);
+        panic!();
     }
 }

@@ -2,14 +2,12 @@ use crate::AppState;
 use crate::LogType;
 use chrono::*;
 use isvp_sys::*;
-use log::error;
+use log::{error, info, warn};
 use mxu::*;
 use opencv::core::*;
 use opencv::prelude::FastLineDetectorTrait;
 use opencv::ximgproc::create_fast_line_detector;
 use std::collections::VecDeque;
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::os::raw::c_void;
 use std::slice::from_raw_parts;
 use std::sync::mpsc;
@@ -259,21 +257,24 @@ pub unsafe fn start(
 
     drop(app_state_tmp);
 
-    let mut file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open("/media/mmc/meteor_log.txt")
-        .unwrap();
-
     let mut detecting_flag = 0;
 
     let _index = 0u128;
     loop {
         let shutdown_flag = match flag.lock() {
             Ok(guard) => guard,
-            Err(_) => continue,
+            Err(e) => {
+                log::warn!(
+                    "shutdown_flag mutex lock error : {} at {}:{}",
+                    e,
+                    file!(),
+                    line!()
+                );
+                continue;
+            }
         };
         if *shutdown_flag {
+            log::info!("Stopping detection_loop");
             break;
         }
         drop(shutdown_flag);
@@ -288,7 +289,15 @@ pub unsafe fn start(
 
         let mut app_state_tmp = match app_state.lock() {
             Ok(guard) => guard,
-            Err(_) => continue,
+            Err(e) => {
+                warn!(
+                    "app_state mutex lock error : {} at {}:{}",
+                    e,
+                    file!(),
+                    line!()
+                );
+                continue;
+            }
         };
         if app_state_tmp.cap {
             app_state_tmp.cap = false;
@@ -372,7 +381,7 @@ pub unsafe fn start(
                 //println!("{}", boxes.len());
                 for rect in boxes.iter() {
                     if rect.pix_cnt > app_state_tmp.detection_config.max_roi_size {
-                        println!("Too Big Roi!");
+                        warn!("he size of the ROI exceeds the detectable upper limit");
                         continue;
                     }
 
@@ -399,8 +408,7 @@ pub unsafe fn start(
                             stack_frame = Some(composite(&mut comp_list));
                             detection_start = time;
                         }
-                        println!("[{}] Meteor Detected", time);
-                        writeln!(file, "[{}] detected", time).unwrap();
+                        info!("Meteor Detected");
                         detecting_flag = app_state_tmp.fps;
                     }
                 }
@@ -418,13 +426,12 @@ pub unsafe fn start(
                         stack_frame_mut.as_mut_ptr(),
                         stack_frame_mut.len(),
                     );
-                    //writeln!(file, "{} us elapsed", std::time::Instant::now().duration_since(st).as_micros()).unwrap();
                 }
 
                 detecting_flag -= 1;
                 if detecting_flag == 0 {
                     //sender.send(None).unwrap();
-                    println!("saving detection");
+                    info!("Start saving detection");
 
                     let (field, mask) = if app_state_tmp.detection_config.solve_field
                         && (app_state_tmp.detection_config.save_wcs

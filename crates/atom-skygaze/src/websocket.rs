@@ -13,6 +13,7 @@ use axum::response::IntoResponse;
 use futures::SinkExt;
 use futures::StreamExt;
 use isvp_sys::*;
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -78,7 +79,15 @@ pub async fn handle_socket(
         while let Some(Ok(msg)) = receiver.next().await {
             let mut app_state_tmp = match app_state.lock() {
                 Ok(guard) => guard,
-                Err(_) => continue,
+                Err(e) => {
+                    warn!(
+                        "app_state mutex lock error : {} at {}:{}",
+                        e,
+                        file!(),
+                        line!()
+                    );
+                    continue;
+                }
             };
             match msg {
                 Message::Text(texta) => {
@@ -89,7 +98,7 @@ pub async fn handle_socket(
                             drop(app_state_tmp);
                         }
                         // Measure round trip time.
-                        "time" => {
+                        "ping" => {
                             let now = std::time::Instant::now();
                             drop(app_state_tmp);
                             if time_tx.send(now).await.is_err() {
@@ -122,11 +131,17 @@ pub async fn handle_socket(
                                 if text[1] == "on" {
                                     app_state_tmp.ircut_on = true;
                                     drop(app_state_tmp);
-                                    ircut_on().unwrap();
+                                    if let Err(e) = ircut_on() {
+                                        error!("Failed to turn on ircut filter : {}", e);
+                                        panic!();
+                                    }
                                 } else if text[1] == "off" {
                                     app_state_tmp.ircut_on = false;
                                     drop(app_state_tmp);
-                                    ircut_off().unwrap();
+                                    if let Err(e) = ircut_off() {
+                                        error!("Failed to turn off ircut filter : {}", e);
+                                        panic!();
+                                    }
                                 }
                             }
                         }
@@ -146,11 +161,17 @@ pub async fn handle_socket(
                                 if text[1] == "on" {
                                     app_state_tmp.irled_on = true;
                                     drop(app_state_tmp);
-                                    irled_on().unwrap();
+                                    if let Err(e) = irled_on() {
+                                        error!("Failed to turn off ir led : {}", e);
+                                        panic!();
+                                    }
                                 } else if text[1] == "off" {
                                     app_state_tmp.irled_on = false;
                                     drop(app_state_tmp);
-                                    irled_off().unwrap();
+                                    if let Err(e) = irled_off() {
+                                        error!("Failed to turn off ir led : {}", e);
+                                        panic!();
+                                    }
                                 }
                             }
                         }
@@ -197,7 +218,13 @@ pub async fn handle_socket(
                         }
                         "fps" => {
                             if text.len() == 2 {
-                                let fps = text[1].parse().unwrap();
+                                let fps = match text[1].parse() {
+                                    Ok(v) => v,
+                                    Err(_) => {
+                                        warn!("Failed to parse args {} to u8", text[1]);
+                                        continue;
+                                    }
+                                };
                                 if matches!(fps, 5 | 10 | 15 | 20 | 25) {
                                     app_state_tmp.fps = fps;
                                     drop(app_state_tmp);
@@ -209,7 +236,13 @@ pub async fn handle_socket(
                         }
                         "proc" => {
                             if text.len() == 3 {
-                                let v = text[2].parse().unwrap();
+                                let v = match text[2].parse() {
+                                    Ok(v) => v,
+                                    Err(_) => {
+                                        warn!("Failed to parse args {} to u8", text[2]);
+                                        continue;
+                                    }
+                                };
                                 unsafe {
                                     match text[1] {
                                         "sat" => {
@@ -285,8 +318,20 @@ pub async fn handle_socket(
                             if text.len() == 3 {
                                 drop(app_state_tmp);
                                 let new_time = timeval {
-                                    tv_sec: text[1].parse().unwrap(),
-                                    tv_usec: text[2].parse().unwrap(),
+                                    tv_sec: match text[1].parse() {
+                                        Ok(v) => v,
+                                        Err(_) => {
+                                            warn!("Failed to parse args {} to c_ulong", text[1]);
+                                            continue;
+                                        }
+                                    },
+                                    tv_usec: match text[2].parse() {
+                                        Ok(v) => v,
+                                        Err(_) => {
+                                            warn!("Failed to parse args {} to c_long", text[2]);
+                                            continue;
+                                        }
+                                    },
                                 };
                                 unsafe {
                                     let timezone_: *const timezone = std::ptr::null();
@@ -294,22 +339,34 @@ pub async fn handle_socket(
                                     let result = settimeofday(&new_time, timezone_);
 
                                     if result == 0 {
-                                        println!("Set system time");
+                                        info!("Set system time");
                                     } else {
-                                        println!("Failed to set system time");
+                                        warn!("Failed to set system time");
                                     }
                                 }
                             }
                         }
                         "tz" => {
                             if text.len() == 2 {
-                                app_state_tmp.timezone = text[1].parse().unwrap();
+                                app_state_tmp.timezone = match text[1].parse() {
+                                    Ok(v) => v,
+                                    Err(_) => {
+                                        warn!("Failed to parse args {} to i32", text[1]);
+                                        continue;
+                                    }
+                                };
                                 drop(app_state_tmp);
                             }
                         }
                         "det-time" => {
                             if text.len() == 4 {
-                                app_state_tmp.detection_config.use_time = text[1].parse().unwrap();
+                                app_state_tmp.detection_config.use_time = match text[1].parse() {
+                                    Ok(v) => v,
+                                    Err(_) => {
+                                        warn!("Failed to parse args {} to bool", text[1]);
+                                        continue;
+                                    }
+                                };
 
                                 let start = parse_time(text[2]);
                                 let end = parse_time(text[3]);
@@ -318,17 +375,38 @@ pub async fn handle_socket(
                                         start: st_time,
                                         end: ed_time,
                                     };
+                                } else {
+                                    warn!("Failed to parse args {} to (u32, u32)", text[2]);
+                                    warn!("Failed to parse args {} to (u32, u32)", text[3]);
+                                    continue;
                                 }
                                 drop(app_state_tmp);
                             }
                         }
                         "solve" => {
                             if text.len() == 4 {
-                                app_state_tmp.detection_config.solve_field =
-                                    text[1].parse().unwrap();
-                                app_state_tmp.detection_config.save_wcs = text[2].parse().unwrap();
+                                app_state_tmp.detection_config.solve_field = match text[1].parse() {
+                                    Ok(v) => v,
+                                    Err(_) => {
+                                        warn!("Failed to parse args {} to bool", text[1]);
+                                        continue;
+                                    }
+                                };
+                                app_state_tmp.detection_config.save_wcs = match text[2].parse() {
+                                    Ok(v) => v,
+                                    Err(_) => {
+                                        warn!("Failed to parse args {} to bool", text[2]);
+                                        continue;
+                                    }
+                                };
                                 app_state_tmp.detection_config.draw_constellation =
-                                    text[3].parse().unwrap();
+                                    match text[3].parse() {
+                                        Ok(v) => v,
+                                        Err(_) => {
+                                            warn!("Failed to parse args {} to bool", text[3]);
+                                            continue;
+                                        }
+                                    };
                                 drop(app_state_tmp);
                             }
                         }
@@ -337,11 +415,9 @@ pub async fn handle_socket(
                             tokio::spawn(system::reboot(flag));
                             break;
                         }
-                        "freeze" => loop {
-                            std::thread::sleep(std::time::Duration::from_millis(1000));
-                        },
                         _ => {
-                            println!("Unknwon command")
+                            warn!("Unknwon command : {}", texta);
+                            continue;
                         }
                     }
                 }

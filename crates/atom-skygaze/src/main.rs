@@ -14,7 +14,12 @@ use crate::websocket::*;
 use crate::webstream::*;
 use axum::routing::get;
 use axum::Router;
+use log::*;
 use serde::{Deserialize, Serialize};
+use simplelog::CombinedLogger;
+use simplelog::SimpleLogger;
+use simplelog::WriteLogger;
+use std::fs::File;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -79,12 +84,34 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
-    let watchdog = WatchdogManager::init(10).unwrap();
+    CombinedLogger::init(vec![
+        SimpleLogger::new(LevelFilter::Debug, simplelog::Config::default()),
+        WriteLogger::new(
+            LevelFilter::Debug,
+            simplelog::Config::default(),
+            File::create("./media/mmc/atomskygaze.log").unwrap(),
+        ),
+    ])
+    .unwrap();
 
+    log::info!("Initializing watchdog");
+    let watchdog = match WatchdogManager::init(10) {
+        Ok(wd) => wd,
+        Err(err) => {
+            log::error!("WatchdogManager::init failed with error : {}", err);
+            panic!();
+        }
+    };
+
+    log::info!("Initializing config");
     let app_state = match load_from_file().await {
-        Ok(p) => p,
-        Err(_) => {
+        Ok(p) => {
+            log::info!("Found config file");
+            p
+        }
+        Err(err) => {
+            log::debug!("Failed to open the config file {}", err);
+            log::info!("Creating config file");
             let app_state = AppState {
                 mask: vec![0u8; 18 * 32],
                 detect: false,
@@ -117,15 +144,24 @@ async fn main() {
                 cap: false,
                 logs: vec![],
             };
-            save_to_file(app_state.clone()).await.unwrap();
+            if let Err(e) = save_to_file(app_state.clone()).await {
+                log::error!("Failed to save the config : {}", e);
+                panic!();
+            }
             app_state
         }
     };
     let app_state_clone = app_state.clone();
 
+    log::info!("Initializing system config");
     let atom_config = match load_atomconf().await {
-        Ok(p) => p,
-        Err(_) => {
+        Ok(p) => {
+            log::info!("Found system config file");
+            p
+        }
+        Err(err) => {
+            log::debug!("Failed to open the system config file {}", err);
+            log::info!("Creating system config file");
             let atomconf = AtomConfig {
                 netconf: NetworkConfig {
                     hostname: "atomskygaze".to_owned(),
@@ -134,7 +170,10 @@ async fn main() {
                     psk: "".to_owned(),
                 },
             };
-            save_atomconf(atomconf.clone()).await.unwrap();
+            if let Err(e) = save_atomconf(atomconf.clone()).await {
+                log::error!("Failed to save the systen config : {}", e);
+                panic!();
+            }
             atomconf
         }
     };
@@ -146,66 +185,121 @@ async fn main() {
     let (detected_tx, detected_rx) = mpsc::channel();
     let shutdown_flag = Arc::new(Mutex::new(false));
 
-    gpio_init().unwrap();
+    if let Err(e) = gpio_init() {
+        log::error!("Failed to initialize gpios : {}", e);
+        panic!();
+    }
+    log::info!("gpio initialized");
 
     if app_state_clone.ircut_on {
+        log::info!("turned on ircut leds");
         ircut_on().unwrap();
     }
 
     if app_state_clone.irled_on {
+        log::info!("turned off ircut leds");
         irled_on().unwrap();
     }
 
     let app_state_common_instance = app_state_common.clone();
     let flag = shutdown_flag.clone();
     let wd_feeder = watchdog.make_instance();
-    thread::Builder::new()
+    log::info!("Starting led_loop thread");
+    let res = thread::Builder::new()
         .name("led_loop".to_string())
         .spawn(move || {
             let mut blue_on = false;
             loop {
                 let shutdown_flag = match flag.lock() {
                     Ok(guard) => guard,
-                    Err(_) => continue,
+                    Err(e) => {
+                        log::warn!(
+                            "shutdown_flag mutex lock error : {} at {}:{}",
+                            e,
+                            file!(),
+                            line!()
+                        );
+                        continue;
+                    }
                 };
 
                 if *shutdown_flag {
+                    log::info!("Stopping led_loop");
                     break;
                 }
                 drop(shutdown_flag);
 
                 let app_state = match app_state_common_instance.lock() {
                     Ok(guard) => guard,
-                    Err(_) => continue,
+                    Err(e) => {
+                        warn!(
+                            "app_state mutex lock error : {} at {}:{}",
+                            e,
+                            file!(),
+                            line!()
+                        );
+                        continue;
+                    }
                 };
 
                 if app_state.led_on {
                     if !app_state.detect {
                         drop(app_state);
                         if blue_on {
-                            led_off(LEDType::Blue).unwrap();
-                            led_on(LEDType::Orange).unwrap();
+                            if let Err(e) = led_off(LEDType::Blue) {
+                                log::error!("Failed to turn off blue led : {}", e);
+                                panic!();
+                            }
+                            if let Err(e) = led_on(LEDType::Orange) {
+                                log::error!("Failed to turn on orange led : {}", e);
+                                panic!();
+                            }
                         } else {
-                            led_off(LEDType::Orange).unwrap();
-                            led_on(LEDType::Blue).unwrap();
+                            if let Err(e) = led_off(LEDType::Orange) {
+                                log::error!("Failed to turn off orange led : {}", e);
+                                panic!();
+                            }
+                            if let Err(e) = led_on(LEDType::Blue) {
+                                log::error!("Failed to turn on blue led : {}", e);
+                                panic!();
+                            }
                         }
 
                         blue_on = !blue_on;
                     } else {
                         drop(app_state);
-                        led_on(LEDType::Blue).unwrap();
-                        led_off(LEDType::Orange).unwrap();
+                        if let Err(e) = led_on(LEDType::Blue) {
+                            log::error!("Failed to turn on blue led : {}", e);
+                            panic!();
+                        }
+                        if let Err(e) = led_off(LEDType::Orange) {
+                            log::error!("Failed to turn off orange led : {}", e);
+                            panic!();
+                        }
                     }
                 } else {
                     drop(app_state);
-                    led_off(LEDType::Blue).unwrap();
-                    led_off(LEDType::Orange).unwrap();
+                    if let Err(e) = led_off(LEDType::Blue) {
+                        log::error!("Failed to turn off blue led : {}", e);
+                        panic!();
+                    }
+                    if let Err(e) = led_off(LEDType::Orange) {
+                        log::error!("Failed to turn off orange led : {}", e);
+                        panic!();
+                    }
                 }
-                wd_feeder.feed().unwrap();
+                if let Err(e) = wd_feeder.feed() {
+                    log::error!("Failed to feed watchdog : {}", e);
+                    panic!();
+                }
                 std::thread::sleep(std::time::Duration::from_millis(500));
             }
-        })
-        .unwrap();
+        });
+
+    if let Err(e) = res {
+        log::error!("Failed to start led_loop : {}", e);
+        panic!();
+    }
 
     let app_state_common_instance1 = app_state_common.clone();
     let app_state_common_instance2 = app_state_common.clone();
@@ -215,38 +309,83 @@ async fn main() {
     let flag3 = shutdown_flag.clone();
     let flag4 = shutdown_flag.clone();
     unsafe {
-        imp_init(app_state_clone);
+        log::info!("Initializing IMP");
+        if !imp_init(app_state_clone) {
+            log::error!("imp_init failed");
+            panic!();
+        }
+        log::info!("Logging all isp value");
         log_all_value();
-        imp_framesource_init();
-        imp_encoder_init();
+        log::info!("Initializing framesource");
+        if !imp_framesource_init() {
+            log::error!("imp_framesource_init failed");
+            panic!();
+        }
+        log::info!("Initializing encoders");
+        if !imp_encoder_init() {
+            log::error!("imp_encoder_init failed");
+            panic!();
+        }
+        log::info!("Binding OSD");
         let (grp_num, font_handle) = imp_osd_bind();
-        imp_jpeg_init();
-        imp_avc_init();
-        imp_framesource_start();
-        init();
+        log::info!("Initializing jpeg");
+        if !imp_jpeg_init() {
+            log::error!("imp_jpeg_init failed");
+            panic!();
+        }
+        log::info!("Initializing hevc");
+        if !imp_hevc_init() {
+            log::error!("imp_hevc_init failed");
+            panic!();
+        }
+        log::info!("Starting framesource");
+        if !imp_framesource_start() {
+            log::error!("imp_framesource_start failed");
+            panic!();
+        }
+        log::info!("Initializing detection");
+        if !init() {
+            log::error!("detection init failed");
+            panic!();
+        }
 
-        thread::Builder::new()
+        log::info!("Starting osd_loop thread");
+        let res = thread::Builder::new()
             .name("osd_loop".to_string())
             .spawn(move || {
                 imp_osd_start(grp_num, font_handle, app_state_common_instance1, flag1);
-            })
-            .unwrap();
+            });
+
+        if let Err(e) = res {
+            log::error!("Failed to start osd_loop : {}", e);
+            panic!();
+        }
 
         record_loops(detected_rx, app_state_common_instance2, flag2);
 
-        thread::Builder::new()
+        log::info!("Starting jpeg_loop thread");
+        let res = thread::Builder::new()
             .name("jpeg_loop".to_string())
             .spawn(|| {
                 jpeg_start(tx, flag3);
-            })
-            .unwrap();
+            });
 
-        thread::Builder::new()
-            .name("led_loop".to_string())
+        if let Err(e) = res {
+            log::error!("Failed to start jpeg_loop : {}", e);
+            panic!();
+        }
+
+        log::info!("Starting detection_loop thread");
+        let res = thread::Builder::new()
+            .name("detection_loop".to_string())
             .spawn(move || {
                 start(app_state_common_instance3, detected_tx, logtx, flag4);
-            })
-            .unwrap();
+            });
+
+        if let Err(e) = res {
+            log::error!("Failed to start detection_loop : {}", e);
+            panic!();
+        }
     };
 
     let assets_dir = PathBuf::from("/media/mmc/assets/web/");
@@ -260,12 +399,21 @@ async fn main() {
         .with_state((rx, app_state_common, atomconf_common, logrx, flag));
 
     // run it with hyper
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:80").await.unwrap();
+    let listener = match tokio::net::TcpListener::bind("0.0.0.0:80").await {
+        Ok(tcp) => tcp,
+        Err(e) => {
+            log::error!("Failed to bind TcpListener : {}", e);
+            panic!();
+        }
+    };
 
-    axum::serve(
+    if let Err(e) = axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
     .await
-    .unwrap();
+    {
+        log::error!("Axum serve failed : {}", e);
+        panic!();
+    }
 }

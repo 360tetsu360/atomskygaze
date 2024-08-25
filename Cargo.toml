@@ -9,3 +9,6 @@ members = [
 
 [patch.crates-io]
 fitsio-sys = { path = "./submodules/rust-fitsio/fitsio-sys" }
+
+[profile.release]
+panic = "abort"
