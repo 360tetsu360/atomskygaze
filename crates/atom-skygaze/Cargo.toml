@@ -1,6 +1,6 @@
 [package]
 name = "atom-skygaze"
-version = "0.2.0-beta"
+version = "0.2.0-beta2"
 edition = "2021"
 authors = ["tmmgq"]
 
