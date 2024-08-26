@@ -1,20 +1,13 @@
 use crate::imp_shutdown;
 use log::{error, info};
 use std::process::Command;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::time::{sleep, Duration};
 
-pub async fn reboot(flag: Arc<Mutex<bool>>) {
+pub async fn reboot(flag: Arc<AtomicBool>) {
     info!("Shutdown loops");
-    match flag.lock() {
-        Ok(mut guard) => {
-            *guard = true;
-        }
-        Err(poisoned) => {
-            let mut guard = poisoned.into_inner();
-            *guard = true;
-        }
-    }
+    flag.store(true, Ordering::Relaxed);
 
     sleep(Duration::from_secs(5)).await;
 

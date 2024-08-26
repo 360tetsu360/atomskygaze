@@ -10,9 +10,8 @@ use opencv::ximgproc::create_fast_line_detector;
 use std::collections::VecDeque;
 use std::os::raw::c_void;
 use std::slice::from_raw_parts;
-use std::sync::mpsc;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, mpsc};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::watch;
 
 const RESIZED_X: usize = 32;
@@ -245,7 +244,7 @@ pub unsafe fn start(
     app_state: Arc<Mutex<AppState>>,
     sender: mpsc::Sender<SaveMsg>,
     log_tx: watch::Sender<LogType>,
-    flag: Arc<Mutex<bool>>,
+    flag: Arc<AtomicBool>,
 ) {
     let mut last_frame: *mut IMPFrameInfo = std::ptr::null_mut();
     let mut diff_list = VecDeque::<Vec<u8>>::with_capacity(10);
@@ -261,23 +260,10 @@ pub unsafe fn start(
 
     let _index = 0u128;
     loop {
-        let shutdown_flag = match flag.lock() {
-            Ok(guard) => guard,
-            Err(e) => {
-                log::warn!(
-                    "shutdown_flag mutex lock error : {} at {}:{}",
-                    e,
-                    file!(),
-                    line!()
-                );
-                continue;
-            }
-        };
-        if *shutdown_flag {
+        if flag.load(Ordering::Relaxed) {
             log::info!("Stopping detection_loop");
             break;
         }
-        drop(shutdown_flag);
 
         let mut new_frame: *mut IMPFrameInfo = std::ptr::null_mut();
         let mut full_frame: *mut IMPFrameInfo = std::ptr::null_mut();

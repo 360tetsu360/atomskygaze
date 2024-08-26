@@ -1,5 +1,3 @@
-use crate::config::load_from_file;
-use crate::config::save_to_file;
 use crate::config::*;
 use crate::detection::*;
 use crate::download::download_file;
@@ -16,13 +14,10 @@ use axum::routing::get;
 use axum::Router;
 use log::*;
 use serde::{Deserialize, Serialize};
-use simplelog::CombinedLogger;
-use simplelog::SimpleLogger;
-use simplelog::WriteLogger;
+use simplelog::{CombinedLogger, SimpleLogger, WriteLogger};
 use std::fs::File;
-use std::sync::mpsc;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, mpsc};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::{net::SocketAddr, path::PathBuf};
 use tokio::sync::watch;
@@ -87,7 +82,7 @@ async fn main() {
     CombinedLogger::init(vec![
         SimpleLogger::new(LevelFilter::Debug, simplelog::Config::default()),
         WriteLogger::new(
-            LevelFilter::Debug,
+            LevelFilter::Info,
             simplelog::Config::default(),
             File::create("./media/mmc/atomskygaze.log").unwrap(),
         ),
@@ -183,7 +178,7 @@ async fn main() {
     let app_state_common = Arc::new(Mutex::new(app_state));
     let atomconf_common = Arc::new(Mutex::new(atom_config));
     let (detected_tx, detected_rx) = mpsc::channel();
-    let shutdown_flag = Arc::new(Mutex::new(false));
+    let shutdown_flag = Arc::new(AtomicBool::new(false));
 
     if let Err(e) = gpio_init() {
         log::error!("Failed to initialize gpios : {}", e);
@@ -210,24 +205,10 @@ async fn main() {
         .spawn(move || {
             let mut blue_on = false;
             loop {
-                let shutdown_flag = match flag.lock() {
-                    Ok(guard) => guard,
-                    Err(e) => {
-                        log::warn!(
-                            "shutdown_flag mutex lock error : {} at {}:{}",
-                            e,
-                            file!(),
-                            line!()
-                        );
-                        continue;
-                    }
-                };
-
-                if *shutdown_flag {
+                if flag.load(Ordering::Relaxed) {
                     log::info!("Stopping led_loop");
                     break;
                 }
-                drop(shutdown_flag);
 
                 let app_state = match app_state_common_instance.lock() {
                     Ok(guard) => guard,

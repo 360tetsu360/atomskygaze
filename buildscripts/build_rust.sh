@@ -19,5 +19,5 @@ EOF
 
 cd $WORKSPACE
 cp -pR "$WORKSPACE"/crates/isvp-sys/lib/* $BUILDROOT_DIR/output/target/usr/lib
-cargo +nightly build -Z build-std --target mipsel-unknown-linux-gnu --release
+cargo +nightly build -Z build-std=std,panic_abort --target mipsel-unknown-linux-gnu --release
 cp -dpf $WORKSPACE/target/mipsel-unknown-linux-gnu/release/atom-skygaze $TARGET_DIR/usr/bin/atom-skygaze

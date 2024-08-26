@@ -4,8 +4,9 @@ use crate::constellation::*;
 use fitsio::errors::Result;
 use fitsio::hdu::FitsHdu;
 use fitsio::FitsFile;
+use log::error;
 use std::alloc::{alloc, Layout};
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 use std::slice::from_raw_parts;
 use wrapper::*;
 
@@ -48,6 +49,21 @@ const MAX_WIDTH: f64 = 110.;
 
 const INDEX_DIR: &str = "/media/mmc/assets/solver/index";
 
+unsafe fn get_sep_errors(status: i32) -> (String, String) {
+    let mut buf = vec![0u8; 64];
+    sep_get_errmsg(status, buf.as_mut_ptr() as *mut i8);
+
+    let cstr = CStr::from_bytes_until_nul(&buf).expect("nh");
+    let err_msg = String::from_utf8_lossy(cstr.to_bytes()).to_string();
+
+    let mut buf = vec![0u8; 512];
+    sep_get_errdetail(buf.as_mut_ptr() as *mut i8);
+
+    let cstr = CStr::from_bytes_until_nul(&buf).expect("nh");
+    let err_detail = String::from_utf8_lossy(cstr.to_bytes()).to_string();
+    (err_msg, err_detail)
+}
+
 #[derive(Clone, Debug)]
 pub struct Catalog {
     pub width: usize,
@@ -59,7 +75,7 @@ pub struct Catalog {
 }
 
 pub fn extract(
-    image: &mut [u8],
+    image: &mut Vec<u32>,
     mask: Option<&[u8]>,
     width: usize,
     height: usize,
@@ -73,7 +89,7 @@ pub fn extract(
         noise: std::ptr::null(),
         mask: mask_ptr,
         segmap: std::ptr::null(),
-        dtype: SEP_TBYTE as i32,
+        dtype: SEP_TINT as i32,
         ndtype: 0,
         mdtype: mdtype as i32,
         sdtype: 0,
@@ -89,24 +105,33 @@ pub fn extract(
     let mut catalog: *mut sep_catalog = std::ptr::null_mut();
 
     unsafe {
-        if sep_background(&image_, 64, 64, 3, 3, 0., &mut bkg) != 0 {
+        let res = sep_background(&image_, 64, 64, 3, 3, 0., &mut bkg);
+        if res != 0 {
+            error!("Failed sep_background");
+            let (msg, detail) = get_sep_errors(res);
+            error!("{} : {}", msg, detail);
+
             sep_bkg_free(bkg);
             return None;
         }
 
-        if sep_bkg_subarray(
+        let res = sep_bkg_subarray(
             bkg,
             image.as_mut_ptr() as *mut ::std::os::raw::c_void,
-            SEP_TBYTE as i32,
-        ) != 0
-        {
+            SEP_TINT as i32,
+        );
+        if res != 0 {
+            error!("Failed sep_bkg_subarray");
+            let (msg, detail) = get_sep_errors(res);
+            error!("{} : {}", msg, detail);
+
             sep_bkg_free(bkg);
             return None;
         }
 
         let thresh = THRESH * (*bkg).globalrms;
 
-        if sep_extract(
+        let res = sep_extract(
             &image_,
             thresh,
             SEP_THRESH_ABS as i32,
@@ -120,8 +145,12 @@ pub fn extract(
             1,
             1.,
             &mut catalog,
-        ) != 0
-        {
+        );
+        if res != 0 {
+            error!("Failed sep_extract");
+            let (msg, detail) = get_sep_errors(res);
+            error!("{} : {}", msg, detail);
+
             sep_bkg_free(bkg);
             sep_catalog_free(catalog);
             return None;

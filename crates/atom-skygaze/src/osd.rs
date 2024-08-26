@@ -4,6 +4,7 @@ use chrono::*;
 use isvp_sys::*;
 use log::{error, warn};
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 const TEXT_LENGTH: usize = 60;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -165,7 +166,7 @@ pub unsafe fn imp_osd_start(
     grp_num: ::std::os::raw::c_int,
     font_handle: IMPRgnHandle,
     app_state: Arc<Mutex<AppState>>,
-    flag: Arc<Mutex<bool>>,
+    flag: Arc<AtomicBool>,
 ) {
     let mut timestamp_data = vec![0u8; TEXT_LENGTH * 14 * 14];
     let mut last_state = true;
@@ -174,24 +175,10 @@ pub unsafe fn imp_osd_start(
     imp_osd_show(grp_num, font_handle, 1);
 
     loop {
-        let shutdown_flag = match flag.lock() {
-            Ok(guard) => guard,
-            Err(e) => {
-                log::warn!(
-                    "shutdown_flag mutex lock error : {} at {}:{}",
-                    e,
-                    file!(),
-                    line!()
-                );
-                continue;
-            }
-        };
-
-        if *shutdown_flag {
-            log::info!("Stopping led_loop");
+        if flag.load(Ordering::Relaxed) {
+            log::info!("Stopping osd_loop");
             break;
         }
-        drop(shutdown_flag);
 
         let app_state_tmp = match app_state.lock() {
             Ok(guard) => guard,

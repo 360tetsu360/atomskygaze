@@ -26,12 +26,13 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 pub fn record_loops(
     detected_rx: mpsc::Receiver<SaveMsg>,
     app_state: Arc<Mutex<AppState>>,
-    flag: Arc<Mutex<bool>>,
+    flag: Arc<AtomicBool>,
 ) {
     info!("Starting hevc_loop");
     let res = thread::Builder::new()
@@ -54,31 +55,17 @@ pub fn record_loops(
     }
 }
 
-unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>>) -> bool {
+unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<AtomicBool>) {
     if IMP_Encoder_StartRecvPic(3) < 0 {
         error!("IMP_Encoder_StartRecvPic failed");
         panic!();
     }
 
     loop {
-        let shutdown_flag = match flag.lock() {
-            Ok(guard) => guard,
-            Err(e) => {
-                warn!(
-                    "shutdown_flag mutex lock error : {} at {}:{}",
-                    e,
-                    file!(),
-                    line!()
-                );
-                continue;
-            }
-        };
-
-        if *shutdown_flag {
+        if flag.load(Ordering::Relaxed) {
             log::info!("Stopping hevc_loop");
-            break true;
+            break;
         }
-        drop(shutdown_flag);
 
         let app_state_tmp = match app_state.lock() {
             Ok(guard) => guard,
@@ -146,7 +133,7 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
 
         let mp4title = current_time.format("%Y-%m-%d-%H-%M").to_string();
 
-        let file = match File::create(mp4path) {
+        let file = match File::create(&mp4path) {
             Ok(f) => f,
             Err(e) => {
                 error!("create failed : {}", e);
@@ -155,7 +142,10 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
         };
         let mut mp4muxer = Mp4Muxer::new(file);
         mp4muxer.init_video(1920, 1080, true, &mp4title);
-        IMP_Encoder_RequestIDR(3);
+        if IMP_Encoder_RequestIDR(3) < 0 {
+            log::error!("IMP_Encoder_RequestIDR failed");
+            break;
+        }
 
         loop {
             let app_state_tmp = match app_state.lock() {
@@ -183,23 +173,10 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
                 break;
             }
 
-            let shutdown_flag = match flag.lock() {
-                Ok(guard) => guard,
-                Err(e) => {
-                    warn!(
-                        "shutdown_flag mutex lock error : {} at {}:{}",
-                        e,
-                        file!(),
-                        line!()
-                    );
-                    continue;
-                }
-            };
-
-            if *shutdown_flag {
+            if flag.load(Ordering::Relaxed) {
+                log::info!("Stopping hevc_loop");
                 break;
             }
-            drop(shutdown_flag);
 
             if IMP_Encoder_PollingStream(3, 10000) < 0 {
                 warn!("IMP_Encoder_PollingStream failed");
@@ -274,12 +251,33 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<Mutex<bool>
     }
 }
 
+fn u8_to_u32(src: &[u8], dst: &mut Vec<u32>) {
+    for i in 0..src.len() {
+        dst[i] = i as u32;
+    }
+}
+
 unsafe fn try_solve_field(field: &mut Vec<u8>, mask_small: &[u8]) -> Option<Solved> {
     let mut mask_full = Vec::with_capacity(field.len());
     create_mask(mask_small.as_ptr(), mask_full.as_mut_ptr());
 
-    let catalog = extract(field.as_mut_slice(), Some(&mask_full), 640, 360)?;
-    solve_field(catalog, true)
+    let mut field_u32 = Vec::with_capacity(field.len());
+    field_u32.set_len(field.len());
+    u8_to_u32(&field, &mut field_u32);
+    let catalog = match extract(&mut field_u32, Some(&mask_full), 640, 360) {
+        Some(c) => c,
+        None => {
+            warn!("Nothing found in catalog");
+            return None;
+        }
+    };
+    match solve_field(catalog, true) {
+        Some(solved) => Some(solved),
+        None => {
+            warn!("Nothing found in field");
+            None
+        }
+    }
 }
 
 fn save_detection(rx: mpsc::Receiver<SaveMsg>) {

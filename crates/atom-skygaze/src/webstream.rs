@@ -2,34 +2,21 @@ use isvp_sys::*;
 use log::{error, warn};
 use std::io::Cursor;
 use std::io::Write;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::watch;
 
-pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>, flag: Arc<Mutex<bool>>) -> bool {
+pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>, flag: Arc<AtomicBool>) {
     if IMP_Encoder_StartRecvPic(2) < 0 {
         error!("IMP_Encoder_StartRecvPic failed");
         panic!();
     }
 
     loop {
-        let shutdown_flag = match flag.lock() {
-            Ok(guard) => guard,
-            Err(e) => {
-                log::warn!(
-                    "shutdown_flag mutex lock error : {} at {}:{}",
-                    e,
-                    file!(),
-                    line!()
-                );
-                continue;
-            }
-        };
-
-        if *shutdown_flag {
+        if flag.load(Ordering::Relaxed) {
             log::info!("Stopping jpeg_loop");
-            break true;
+            break;
         }
-        drop(shutdown_flag);
 
         if IMP_Encoder_PollingStream(2, 10000) < 0 {
             warn!("IMP_Encoder_PollingStream failed");

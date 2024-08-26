@@ -8,6 +8,7 @@ use crate::DetectionTime;
 use axum::extract::{
     ws::{Message, WebSocket},
     State, WebSocketUpgrade,
+    ConnectInfo,
 };
 use axum::response::IntoResponse;
 use futures::SinkExt;
@@ -16,16 +17,18 @@ use isvp_sys::*;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::AtomicBool;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc;
 use tokio::sync::watch;
+use std::net::SocketAddr;
 
 type AppStateWs = State<(
     watch::Receiver<Vec<u8>>,
     Arc<Mutex<AppState>>,
     Arc<Mutex<AtomConfig>>,
     watch::Receiver<LogType>,
-    Arc<Mutex<bool>>,
+    Arc<AtomicBool>,
 )>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -36,8 +39,10 @@ pub enum LogType {
 
 pub async fn handler(
     ws: WebSocketUpgrade,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State((rx, app_state, atom_conf, log_rx, flag)): AppStateWs,
 ) -> impl IntoResponse {
+    info!("WebSocket connected from {}", addr);
     ws.on_upgrade(move |socket: WebSocket| {
         handle_socket(socket, rx, app_state, atom_conf, log_rx, flag)
     })
@@ -49,7 +54,7 @@ pub async fn handle_socket(
     app_state: Arc<Mutex<AppState>>,
     atom_conf: Arc<Mutex<AtomConfig>>,
     mut log_rx: watch::Receiver<LogType>,
-    flag: Arc<Mutex<bool>>,
+    flag: Arc<AtomicBool>,
 ) {
     let (mut sender, mut receiver) = socket.split();
     let (time_tx, mut time_rx) = mpsc::channel(2);
