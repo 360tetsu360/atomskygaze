@@ -61,7 +61,7 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<AtomicBool>
         panic!();
     }
 
-    loop {
+    'outer: loop {
         if flag.load(Ordering::Relaxed) {
             log::info!("Stopping hevc_loop");
             break;
@@ -175,7 +175,7 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<AtomicBool>
 
             if flag.load(Ordering::Relaxed) {
                 log::info!("Stopping hevc_loop");
-                break;
+                break 'outer;
             }
 
             if IMP_Encoder_PollingStream(3, 10000) < 0 {
