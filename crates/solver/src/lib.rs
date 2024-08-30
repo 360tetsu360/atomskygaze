@@ -6,7 +6,7 @@ use fitsio::hdu::FitsHdu;
 use fitsio::FitsFile;
 use log::error;
 use std::alloc::{alloc, Layout};
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 use std::slice::from_raw_parts;
 use wrapper::*;
 

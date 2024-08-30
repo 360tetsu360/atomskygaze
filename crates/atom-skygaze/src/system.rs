@@ -1,8 +1,8 @@
 use crate::imp_shutdown;
 use log::{error, info};
 use std::process::Command;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 
 pub async fn reboot(flag: Arc<AtomicBool>) {

@@ -15,13 +15,13 @@ use axum::Router;
 use log::*;
 use serde::{Deserialize, Serialize};
 use simplelog::{CombinedLogger, SimpleLogger, WriteLogger};
-use std::sync::{Arc, Mutex, mpsc};
+use std::fs::OpenOptions;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::{net::SocketAddr, path::PathBuf};
 use tokio::sync::watch;
 use tower_http::services::ServeDir;
-use std::fs::OpenOptions;
 
 mod config;
 mod detection;
@@ -84,14 +84,10 @@ async fn main() {
         .create(true)
         .open("/media/mmc/atomskygaze.log")
         .unwrap();
-    
+
     CombinedLogger::init(vec![
         SimpleLogger::new(LevelFilter::Info, simplelog::Config::default()),
-        WriteLogger::new(
-            LevelFilter::Info,
-            simplelog::Config::default(),
-            file,
-        ),
+        WriteLogger::new(LevelFilter::Info, simplelog::Config::default(), file),
     ])
     .unwrap();
 

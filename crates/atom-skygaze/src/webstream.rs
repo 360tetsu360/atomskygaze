@@ -2,8 +2,8 @@ use isvp_sys::*;
 use log::{error, warn};
 use std::io::Cursor;
 use std::io::Write;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tokio::sync::watch;
 
 pub unsafe fn jpeg_start(tx: watch::Sender<Vec<u8>>, flag: Arc<AtomicBool>) {

@@ -24,9 +24,9 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 pub fn record_loops(
@@ -251,19 +251,20 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<AtomicBool>
     }
 }
 
-fn u8_to_u32(src: &[u8], dst: &mut Vec<u32>) {
-    for i in 0..src.len() {
-        dst[i] = i as u32;
+fn u8_to_u32(src: &[u8], dst: &mut [std::mem::MaybeUninit<u32>]) {
+    for (i, item) in dst.iter_mut().enumerate().take(src.len()) {
+        item.write(i as u32);
     }
 }
 
-unsafe fn try_solve_field(field: &mut Vec<u8>, mask_small: &[u8]) -> Option<Solved> {
+unsafe fn try_solve_field(field: &mut [u8], mask_small: &[u8]) -> Option<Solved> {
     let mut mask_full = Vec::with_capacity(field.len());
     create_mask(mask_small.as_ptr(), mask_full.as_mut_ptr());
 
     let mut field_u32 = Vec::with_capacity(field.len());
+    let remaining = field_u32.spare_capacity_mut();
+    u8_to_u32(field, remaining);
     field_u32.set_len(field.len());
-    u8_to_u32(&field, &mut field_u32);
     let catalog = match extract(&mut field_u32, Some(&mask_full), 640, 360) {
         Some(c) => c,
         None => {

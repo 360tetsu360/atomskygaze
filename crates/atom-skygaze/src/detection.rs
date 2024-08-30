@@ -10,8 +10,8 @@ use opencv::ximgproc::create_fast_line_detector;
 use std::collections::VecDeque;
 use std::os::raw::c_void;
 use std::slice::from_raw_parts;
-use std::sync::{Arc, Mutex, mpsc};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Arc, Mutex};
 use tokio::sync::watch;
 
 const RESIZED_X: usize = 32;

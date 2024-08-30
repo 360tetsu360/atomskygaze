@@ -7,8 +7,7 @@ use crate::AppState;
 use crate::DetectionTime;
 use axum::extract::{
     ws::{Message, WebSocket},
-    State, WebSocketUpgrade,
-    ConnectInfo,
+    ConnectInfo, State, WebSocketUpgrade,
 };
 use axum::response::IntoResponse;
 use futures::SinkExt;
@@ -16,12 +15,12 @@ use futures::StreamExt;
 use isvp_sys::*;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
+use std::net::SocketAddr;
 use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc;
 use tokio::sync::watch;
-use std::net::SocketAddr;
 
 type AppStateWs = State<(
     watch::Receiver<Vec<u8>>,
