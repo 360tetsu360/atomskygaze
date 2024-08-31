@@ -174,6 +174,32 @@
                 </div>
             </div>
         </dialog>
+        <dialog id="view-dialog" class="dialog">
+            <div class="control-panel">
+                <div class="one-line-title">
+                    View Settings
+                    <button id="view-dialog-close" class="dialog-close">X</button>
+                </div>
+            </div>
+            <div class="control-panel">
+                <div class="one-line">
+                    Timestamp
+                    <label class="toggle">
+                        <input type="checkbox" id="tstmp">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="one-line-sub">
+                    Timestamp Position
+                    <select id="tsselect">
+                        <option>Top Left</option>
+                        <option>Top Right</option>
+                        <option selected>Bottom Left</option>
+                        <option>Bottom Right</option>
+                    </select>
+                </div>
+            </div>
+        </dialog>
         <dialog id="prev-dialog" class="dialog">
             <div class="control-panel">
                 <div class="one-line-title">
@@ -190,6 +216,12 @@
                 <div class="one-line">
                     ATOM Cam Settings
                     <button id="wifi-settings" class="button">Open</button>
+                </div>
+            </div>
+            <div class="control-panel">
+                <div class="one-line">
+                    View Settings
+                    <button id="view-settings" class="button">Open</button>
                 </div>
             </div>
             <div class="control-panel">
@@ -224,15 +256,6 @@
                 <div class="one-line-sub">
                     Settings
                     <button id="det-settings" class="button">Open</button>
-                </div>
-            </div>
-            <div class="control-panel">
-                <div class="one-line">
-                    Timestamp
-                    <label class="toggle">
-                        <input type="checkbox" id="tstmp">
-                        <span class="slider"></span>
-                    </label>
                 </div>
             </div>
             <div class="control-panel">
@@ -360,6 +383,6 @@
         <footer>
 
         </footer>
-        <script src="script.js"></script> 
+        <script src="script2.js"></script> 
     </body>
 </html>

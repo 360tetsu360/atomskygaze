@@ -212,6 +212,10 @@ connection.onmessage = function(event) {
                 }
             }
 
+            let pos = app_state.timestamp_pos;
+            var tsselect = document.getElementById("tsselect");
+            tsselect.options[pos].selected = true;
+
             for (const log_item of app_state.logs) {
                 console.log(log_item);
                 const timestamp = log_item.Detection[0];
@@ -303,6 +307,31 @@ document.getElementById("wifi-settings").onclick = () => {
 
 document.getElementById("wifi-dialog-close").onclick = () => {
     const dialog = document.getElementById("wifi-dialog");
+    dialog.close();
+}
+
+document.getElementById("tsselect").onchange = () => {
+    let tspos = document.getElementById("tsselect").value;
+    let i = 0;
+    if(tspos === "Top Left") {
+        i = 0;
+    } else if (tspos === "Top Right") {
+        i = 1;
+    } else if (tspos === "Bottom Left") {
+        i = 2;
+    } else if (tspos === "Bottom Right") {
+        i = 3;
+    }
+    connection.send(`tspos,${i}`);
+}
+
+document.getElementById("view-settings").onclick = () => {
+    const dialog = document.getElementById("view-dialog");
+    dialog.showModal();
+}
+
+document.getElementById("view-dialog-close").onclick = () => {
+    const dialog = document.getElementById("view-dialog");
     dialog.close();
 }
 

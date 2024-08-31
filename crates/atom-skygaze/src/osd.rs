@@ -6,16 +6,29 @@ use log::{error, warn};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-const TEXT_LENGTH: usize = 60;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const TEXT_LENGTH: usize = 43 + ver_len(VERSION);
 const FONT_SCALE: f32 = 1.;
 static mut FONT_HANDLE: i32 = 0;
 static mut GRP_NUM: i32 = 0;
 
+const fn ver_len(ver: &str) -> usize {
+    ver.len()
+}
+
+#[repr(u32)]
+#[derive(Copy, Clone)]
+pub enum TimestampPos {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
 unsafe fn imp_osd_init(grp_num: ::std::os::raw::c_int) -> IMPRgnHandle {
     let font_handle: IMPRgnHandle = IMP_OSD_CreateRgn(std::ptr::null_mut());
     if IMP_OSD_RegisterRgn(font_handle, grp_num, std::ptr::null_mut()) < 0 {
-        error!("IMP_OSD_RegisterRgn");
+        error!("IMP_OSD_RegisterRgn failed");
         panic!();
     }
 
@@ -28,7 +41,7 @@ unsafe fn imp_osd_init(grp_num: ::std::os::raw::c_int) -> IMPRgnHandle {
             },
             p1: IMPPoint {
                 x: ((CHAR_WIDTH + 2) + TEXT_LENGTH * (CHAR_WIDTH + 2) - 1) as i32,
-                y: 1080 - 8,
+                y: 1080 - 6,
             },
         },
         fmt: IMPPixelFormat_PIX_FMT_MONOWHITE,
@@ -38,7 +51,7 @@ unsafe fn imp_osd_init(grp_num: ::std::os::raw::c_int) -> IMPRgnHandle {
     };
 
     if IMP_OSD_SetRgnAttr(font_handle, &mut font_attr) < 0 {
-        error!("IMP_OSD_SetRgnAttr");
+        error!("IMP_OSD_SetRgnAttr failed");
         panic!();
     }
 
@@ -171,6 +184,7 @@ pub unsafe fn imp_osd_start(
 ) {
     let mut timestamp_data = vec![0u8; TEXT_LENGTH * (CHAR_WIDTH + 2) * CHAR_HEIGHT];
     let mut last_state = true;
+    let mut last_ts_pos = TimestampPos::BottomLeft;
     let uppercase_ver = VERSION.to_uppercase();
 
     imp_osd_show(grp_num, font_handle, 1);
@@ -181,7 +195,7 @@ pub unsafe fn imp_osd_start(
             break;
         }
 
-        let app_state_tmp = match app_state.lock() {
+        let mut app_state_tmp = match app_state.lock() {
             Ok(guard) => guard,
             Err(e) => {
                 warn!(
@@ -202,10 +216,71 @@ pub unsafe fn imp_osd_start(
         }
         last_state = app_state_tmp.timestamp;
 
+        if last_ts_pos as u32 != app_state_tmp.timestamp_pos {
+            let mut rect = IMPRect {
+                p0: IMPPoint { x: 0, y: 0 },
+                p1: IMPPoint { x: 0, y: 0 },
+            };
+            match app_state_tmp.timestamp_pos {
+                0 => {
+                    rect.p0.x = (CHAR_WIDTH + 2) as i32;
+                    rect.p0.y = 5;
+                    rect.p1.x = ((CHAR_WIDTH + 2) + TEXT_LENGTH * (CHAR_WIDTH + 2) - 1) as i32;
+                    rect.p1.y = 20;
+                    last_ts_pos = TimestampPos::TopLeft;
+                }
+                1 => {
+                    rect.p0.x = 1920 - ((TEXT_LENGTH + 1) * (CHAR_WIDTH + 2)) as i32;
+                    rect.p0.y = 5;
+                    rect.p1.x = 1920 - (CHAR_WIDTH + 3) as i32;
+                    rect.p1.y = 20;
+                    last_ts_pos = TimestampPos::TopRight;
+                }
+                2 => {
+                    rect.p0.x = (CHAR_WIDTH + 2) as i32;
+                    rect.p0.y = 1080 - 21;
+                    rect.p1.x = ((CHAR_WIDTH + 2) + TEXT_LENGTH * (CHAR_WIDTH + 2) - 1) as i32;
+                    rect.p1.y = 1080 - 6;
+                    last_ts_pos = TimestampPos::BottomLeft;
+                }
+                3 => {
+                    rect.p0.x = 1920 - ((TEXT_LENGTH + 1) * (CHAR_WIDTH + 2)) as i32;
+                    rect.p0.y = 1080 - 21;
+                    rect.p1.x = 1920 - (CHAR_WIDTH + 3) as i32;
+                    rect.p1.y = 1080 - 6;
+                    last_ts_pos = TimestampPos::BottomRight;
+                }
+                _ => {
+                    warn!(
+                        "Unknown TimestampPos type : {}",
+                        app_state_tmp.timestamp_pos
+                    );
+                    app_state_tmp.timestamp_pos = last_ts_pos as u32;
+                    continue;
+                }
+            }
+
+            let mut font_attr = IMPOSDRgnAttr {
+                type_: IMPOsdRgnType_OSD_REG_BITMAP,
+                rect,
+                fmt: IMPPixelFormat_PIX_FMT_MONOWHITE,
+                data: IMPOSDRgnAttrData {
+                    bitmapData: timestamp_data.as_mut_ptr() as *mut ::std::os::raw::c_void,
+                },
+            };
+
+            if IMP_OSD_SetRgnAttr(font_handle, &mut font_attr) < 0 {
+                error!("Failed IMP_OSD_SetRgnAttr");
+                panic!();
+            }
+        }
+
         if app_state_tmp.timestamp {
             timestamp_data.fill(0);
             let now: DateTime<Utc> = Utc::now();
             let offset = FixedOffset::east_opt(app_state_tmp.timezone).unwrap();
+            drop(app_state_tmp);
+
             let time: DateTime<FixedOffset> = now.with_timezone(&offset);
             let fractional_second = (time.timestamp_subsec_millis() as f64) / 100.0;
             let text = format!(
@@ -247,7 +322,6 @@ pub unsafe fn imp_osd_start(
             };
             IMP_OSD_UpdateRgnAttrData(font_handle, &mut data);
         }
-        drop(app_state_tmp);
 
         std::thread::sleep(std::time::Duration::from_millis(50));
     }

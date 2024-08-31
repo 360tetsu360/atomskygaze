@@ -296,6 +296,18 @@ pub async fn handle_socket(
                                 }
                             }
                         }
+                        "tspos" => {
+                            if text.len() == 2 {
+                                app_state_tmp.timestamp_pos = match text[1].parse() {
+                                    Ok(v) => v,
+                                    Err(_) => {
+                                        warn!("Failed to parse args {} to u32", text[1]);
+                                        continue;
+                                    }
+                                };
+                                drop(app_state_tmp);
+                            }
+                        }
                         "save" => {
                             let app_state_clone = app_state_tmp.clone();
                             drop(app_state_tmp);
