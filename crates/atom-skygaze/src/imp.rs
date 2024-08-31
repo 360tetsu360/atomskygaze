@@ -349,83 +349,6 @@ pub unsafe fn imp_encoder_init() -> bool {
         return false;
     }
 
-    if IMP_Encoder_CreateGroup(1) < 0 {
-        error!("IMP_Encoder_CreateGroup failed");
-        return false;
-    }
-
-    let ratio = 1.0 / (f32::log10((1280. * 720.) / (640. * 360.)) + 1.0);
-    let bitrate = (BITRATE_720P_KBS as f32 * ratio) as u32;
-
-    let mut encoder_attr = IMPEncoderChnAttr {
-        encAttr: IMPEncoderEncAttr {
-            eProfile: 0,
-            uLevel: 0,
-            uTier: 0,
-            uWidth: 0,
-            uHeight: 0,
-            ePicFormat: 0,
-            eEncOptions: 0,
-            eEncTools: 0,
-            crop: IMPEncoderCropCfg {
-                enable: false,
-                x: 0,
-                y: 0,
-                w: 0,
-                h: 0,
-            },
-        },
-        rcAttr: IMPEncoderRcAttr {
-            attrRcMode: IMPEncoderAttrRcMode {
-                rcMode: 0,
-                __bindgen_anon_1: IMPEncoderAttrRcMode__bindgen_ty_1 {
-                    attrFixQp: IMPEncoderAttrFixQP { iInitialQP: 0 },
-                },
-            },
-            outFrmRate: IMPEncoderFrmRate {
-                frmRateNum: 0,
-                frmRateDen: 0,
-            },
-        },
-        gopAttr: IMPEncoderGopAttr {
-            uGopCtrlMode: 0,
-            uGopLength: 0,
-            uNotifyUserLTInter: 0,
-            uMaxSameSenceCnt: 0,
-            bEnableLT: false,
-            uFreqLT: 0,
-            bLTRC: false,
-        },
-    };
-
-    if IMP_Encoder_SetDefaultParam(
-        &mut encoder_attr,
-        IMPEncoderProfile_IMP_ENC_PROFILE_HEVC_MAIN,
-        IMPEncoderRcMode_IMP_ENC_RC_MODE_CAPPED_QUALITY,
-        640,
-        360,
-        25,
-        1,
-        25 * 2,
-        2,
-        -1,
-        bitrate,
-    ) < 0
-    {
-        error!("IMP_Encoder_SetDefaultParam failed");
-        return false;
-    }
-
-    if IMP_Encoder_CreateChn(1, &encoder_attr) < 0 {
-        error!("IMP_Encoder_CreateChn failed");
-        return false;
-    }
-
-    if IMP_Encoder_RegisterChn(1, 1) < 0 {
-        error!("IMP_Encoder_CreateChn failed");
-        return false;
-    }
-
     true
 }
 
@@ -552,7 +475,7 @@ pub unsafe fn imp_jpeg_init() -> bool {
         return false;
     }
 
-    if IMP_Encoder_RegisterChn(1, 2) < 0 {
+    if IMP_Encoder_RegisterChn(0, 2) < 0 {
         error!("IMP_Encoder_RegisterChn failed");
         return false;
     }
