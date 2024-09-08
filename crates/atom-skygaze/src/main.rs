@@ -323,6 +323,11 @@ async fn main() {
             log::error!("imp_hevc_init failed");
             panic!();
         }
+        log::info!("Initializing timelapse");
+        if !imp_timelapse_init() {
+            log::error!("imp_timelapse_init failed");
+            panic!();
+        }
         log::info!("Starting framesource");
         if !imp_framesource_start() {
             log::error!("imp_framesource_start failed");

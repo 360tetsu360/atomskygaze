@@ -34,13 +34,25 @@ pub fn record_loops(
     app_state: Arc<Mutex<AppState>>,
     flag: Arc<AtomicBool>,
 ) {
+    let app_state_clone = app_state.clone();
+    let flag_clone = flag.clone();
     info!("Starting hevc_loop");
     let res = thread::Builder::new()
         .name("hevc_loop".to_string())
-        .spawn(move || unsafe { get_h264_stream(app_state, flag) });
+        .spawn(move || unsafe { get_hevc_stream(app_state_clone, flag_clone) });
 
     if let Err(e) = res {
         error!("Failed to start hevc_loop : {}", e);
+        panic!();
+    }
+
+    info!("Starting timelapse_loop");
+    let res = thread::Builder::new()
+        .name("timelapse_loop".to_string())
+        .spawn(move || unsafe { get_timelapse_stream(app_state, flag) });
+
+    if let Err(e) = res {
+        error!("Failed to start timelapse_loop : {}", e);
         panic!();
     }
 
@@ -55,7 +67,7 @@ pub fn record_loops(
     }
 }
 
-unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<AtomicBool>) {
+unsafe fn get_hevc_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<AtomicBool>) {
     if IMP_Encoder_StartRecvPic(3) < 0 {
         error!("IMP_Encoder_StartRecvPic failed");
         panic!();
@@ -131,7 +143,7 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<AtomicBool>
             .format("/media/mmc/records/regular/%Y%m%d/%H/%M.mp4")
             .to_string();
 
-        let mp4title = current_time.format("%Y-%m-%d-%H-%M").to_string();
+        let mp4title = current_time.format("%Y-%m-%d %H:%M").to_string();
 
         let file = match File::create(&mp4path) {
             Ok(f) => f,
@@ -242,6 +254,195 @@ unsafe fn get_h264_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<AtomicBool>
             }
 
             if IMP_Encoder_ReleaseStream(3, &mut stream) < 0 {
+                error!("IMP_Encoder_ReleaseStream failed");
+                panic!();
+            }
+        }
+
+        mp4muxer.close();
+    }
+}
+
+unsafe fn get_timelapse_stream(app_state: Arc<Mutex<AppState>>, flag: Arc<AtomicBool>) {
+    if IMP_Encoder_StartRecvPic(4) < 0 {
+        error!("IMP_Encoder_StartRecvPic failed");
+        panic!();
+    }
+
+    'outer: loop {
+        if flag.load(Ordering::Relaxed) {
+            log::info!("Stopping timelapse_loop");
+            break;
+        }
+
+        let app_state_tmp = match app_state.lock() {
+            Ok(guard) => guard,
+            Err(e) => {
+                warn!(
+                    "app_state mutex lock error : {} at {}:{}",
+                    e,
+                    file!(),
+                    line!()
+                );
+                continue;
+            }
+        };
+        let now: DateTime<Utc> = Utc::now();
+        let offset = FixedOffset::east_opt(app_state_tmp.timezone).unwrap();
+        let current_time: DateTime<FixedOffset> = now.with_timezone(&offset);
+        drop(app_state_tmp);
+        let next_hour = current_time.hour() + 1;
+
+        let (adjusted_day, adjusted_hour) = if next_hour >= 24 {
+            (current_time.day() + 1, 0)
+        } else {
+            (current_time.day(), next_hour)
+        };
+
+        let target_time = current_time
+            .with_day(adjusted_day)
+            .unwrap()
+            .with_hour(adjusted_hour)
+            .unwrap()
+            .with_minute(0)
+            .unwrap()
+            .with_second(0)
+            .unwrap();
+
+        let dir_month = current_time
+            .format("/media/mmc/records/timelapse/%Y%m")
+            .to_string();
+
+        let dir = Path::new(&dir_month);
+        if !dir.is_dir() {
+            if let Err(e) = std::fs::create_dir(dir) {
+                error!("create_dir failed : {}", e);
+                panic!();
+            }
+        }
+
+        let day_dir = dir.join(format!("{:02}", current_time.day()));
+        if !day_dir.is_dir() {
+            if let Err(e) = std::fs::create_dir(&day_dir) {
+                error!("create_dir failed : {}", e);
+                panic!();
+            }
+        }
+
+        let mp4path = current_time
+            .format("/media/mmc/records/timelapse/%Y%m/%d/%H.mp4")
+            .to_string();
+
+        let mp4title = current_time.format("timelapse %Y-%m-%d %H").to_string();
+
+        let file = match File::create(&mp4path) {
+            Ok(f) => f,
+            Err(e) => {
+                error!("create failed : {}", e);
+                panic!()
+            }
+        };
+        let mut mp4muxer = Mp4Muxer::new(file);
+        mp4muxer.init_video(1920, 1080, true, &mp4title);
+        if IMP_Encoder_RequestIDR(4) < 0 {
+            log::error!("IMP_Encoder_RequestIDR failed");
+            break;
+        }
+
+        loop {
+            let app_state_tmp = match app_state.lock() {
+                Ok(guard) => guard,
+                Err(e) => {
+                    warn!(
+                        "app_state mutex lock error : {} at {}:{}",
+                        e,
+                        file!(),
+                        line!()
+                    );
+                    continue;
+                }
+            };
+            let now: DateTime<Utc> = Utc::now();
+            let offset = FixedOffset::east_opt(app_state_tmp.timezone).unwrap();
+            let current_time: DateTime<FixedOffset> = now.with_timezone(&offset);
+            drop(app_state_tmp);
+
+            if current_time >= target_time {
+                break;
+            } else if target_time - current_time >= TimeDelta::hours(1) {
+                // if system time was set to past.
+                break;
+            }
+
+            if flag.load(Ordering::Relaxed) {
+                log::info!("Stopping timelapse_loop");
+                break 'outer;
+            }
+
+            if IMP_Encoder_PollingStream(4, 10000) < 0 {
+                warn!("IMP_Encoder_PollingStream failed");
+                continue;
+            }
+
+            let mut stream = IMPEncoderStream {
+                phyAddr: 0,
+                virAddr: 0,
+                streamSize: 0,
+                pack: std::ptr::null_mut(),
+                packCount: 0,
+                isVI: false,
+                seq: 0,
+                __bindgen_anon_1: IMPEncoderStream__bindgen_ty_1 {
+                    streamInfo: IMPEncoderStreamInfo {
+                        iNumBytes: 0,
+                        uNumIntra: 0,
+                        uNumSkip: 0,
+                        uNumCU8x8: 0,
+                        uNumCU16x16: 0,
+                        uNumCU32x32: 0,
+                        uNumCU64x64: 0,
+                        iSliceQP: 0,
+                        iMinQP: 0,
+                        iMaxQP: 0,
+                    },
+                },
+            };
+
+            if IMP_Encoder_GetStream(4, &mut stream, false) < 0 {
+                error!("IMP_Encoder_GetStream failed");
+                panic!();
+            }
+
+            let stream_packs = std::slice::from_raw_parts(
+                stream.pack as *const IMPEncoderPack,
+                stream.packCount as usize,
+            );
+
+            for pack in stream_packs {
+                if pack.length > 0 {
+                    let rem_size = stream.streamSize - pack.offset;
+                    if rem_size < pack.length {
+                        let src1 = std::slice::from_raw_parts(
+                            (stream.virAddr + pack.offset) as *const u8,
+                            rem_size as usize,
+                        );
+                        mp4muxer.write_video_with_fps(src1, 60);
+                        let src2 = std::slice::from_raw_parts(
+                            stream.virAddr as *const u8,
+                            (pack.length - rem_size) as usize,
+                        );
+                        mp4muxer.write_video_with_fps(src2, 60);
+                    } else {
+                        let src = std::slice::from_raw_parts(
+                            (stream.virAddr + pack.offset) as *const u8,
+                            pack.length as usize,
+                        );
+                        mp4muxer.write_video_with_fps(src, 60);
+                    }
+                }
+            }
+
+            if IMP_Encoder_ReleaseStream(4, &mut stream) < 0 {
                 error!("IMP_Encoder_ReleaseStream failed");
                 panic!();
             }
@@ -498,4 +699,5 @@ fn save_detection(rx: mpsc::Receiver<SaveMsg>) {
             }
         }
     }
+    info!("detection_loop Ended");
 }

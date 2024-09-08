@@ -592,3 +592,96 @@ pub unsafe fn imp_hevc_init() -> bool {
 
     true
 }
+
+pub unsafe fn imp_timelapse_init() -> bool {
+    let mut channel_attr = IMPEncoderChnAttr {
+        encAttr: IMPEncoderEncAttr {
+            eProfile: 0,
+            uLevel: 0,
+            uTier: 0,
+            uWidth: 0,
+            uHeight: 0,
+            ePicFormat: 0,
+            eEncOptions: 0,
+            eEncTools: 0,
+            crop: IMPEncoderCropCfg {
+                enable: false,
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            },
+        },
+        rcAttr: IMPEncoderRcAttr {
+            attrRcMode: IMPEncoderAttrRcMode {
+                rcMode: 0,
+                __bindgen_anon_1: IMPEncoderAttrRcMode__bindgen_ty_1 {
+                    attrFixQp: IMPEncoderAttrFixQP { iInitialQP: 0 },
+                },
+            },
+            outFrmRate: IMPEncoderFrmRate {
+                frmRateNum: 0,
+                frmRateDen: 0,
+            },
+        },
+        gopAttr: IMPEncoderGopAttr {
+            uGopCtrlMode: 0,
+            uGopLength: 0,
+            uNotifyUserLTInter: 0,
+            uMaxSameSenceCnt: 0,
+            bEnableLT: false,
+            uFreqLT: 0,
+            bLTRC: false,
+        },
+    };
+
+    let ratio = 1.0 / (f32::log10((1920. * 1080.) / (640. * 360.)) + 1.0);
+    let bitrate = (BITRATE_720P_KBS as f32 * ratio) as u32;
+
+    if IMP_Encoder_SetDefaultParam(
+        &mut channel_attr,
+        IMPEncoderProfile_IMP_ENC_PROFILE_HEVC_MAIN,
+        IMPEncoderRcMode_IMP_ENC_RC_MODE_FIXQP,
+        SENSOR_WIDTH as u16,
+        SENSOR_HEIGHT as u16,
+        1,
+        1,
+        2,
+        2,
+        38,
+        bitrate,
+    ) < 0
+    {
+        error!("IMP_Encoder_SetDefaultParam failed");
+        return false;
+    }
+
+    if IMP_Encoder_CreateChn(4, &channel_attr) < 0 {
+        error!("IMP_Encoder_CreateChn failed");
+        return false;
+    }
+
+    if IMP_Encoder_RegisterChn(0, 4) < 0 {
+        error!("IMP_Encoder_RegisterChn failed");
+        return false;
+    }
+
+    let mut framesource_chn = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_FS,
+        groupID: 0,
+        outputID: 0,
+    };
+
+    let mut imp_encoder = IMPCell {
+        deviceID: IMPDeviceID_DEV_ID_ENC,
+        groupID: 0,
+        outputID: 0,
+    };
+
+    if IMP_System_Bind(&mut framesource_chn, &mut imp_encoder) < 0 {
+        error!("IMP_System_Bind failed");
+        return false;
+    }
+
+    true
+}
